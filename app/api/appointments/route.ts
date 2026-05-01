@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     if (fetchError) throw fetchError;
 
     if (existingAppointments && existingAppointments.length > 0) {
-      const hasConflict = existingAppointments.some((apt) => {
+      const hasConflict = existingAppointments.some((apt: { id: string; appointment_date: string; duration_minutes: number | null; status: string }) => {
         const existingStart = new Date(apt.appointment_date);
         const existingEnd = new Date(
           existingStart.getTime() + (apt.duration_minutes || 30) * 60000
