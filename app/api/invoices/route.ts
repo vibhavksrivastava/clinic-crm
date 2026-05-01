@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         .select('id')
         .eq('organization_id', userContext.organizationId);
       
-      const patientIds = patientData?.map(p => p.id) || [];
+      const patientIds = patientData?.map((p: { id: string }) => p.id) || [];
       
       if (patientIds.length > 0) {
         query = query.in('patient_id', patientIds);
