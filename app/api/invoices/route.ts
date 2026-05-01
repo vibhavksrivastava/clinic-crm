@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     
     // Format response to remove nested patient organization_id
-    const formattedData = data?.map(inv => ({
+    const formattedData = data?.map((inv: any) => ({
       ...inv,
       patients: inv.patients ? {
         id: inv.patients.id,

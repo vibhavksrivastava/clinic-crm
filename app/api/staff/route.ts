@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
       // Transform users data to match staff table structure
       // Filter to ensure role_id exists and role_type matches (extra safety check)
       const transformedData = (data as any[])
-        ?.filter(user => user.role_id && user.roles?.role_type === (role || 'doctor'))
-        ?.map(user => ({
+        ?.filter((user: any) => user.role_id && user.roles?.role_type === (role || 'doctor'))
+        ?.map((user: any) => ({
           id: user.id,
           first_name: user.first_name,
           last_name: user.last_name,

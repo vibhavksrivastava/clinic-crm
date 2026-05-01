@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     ];
 
     // Delete existing staff with these emails first (to handle duplicates)
-    const emailsToDelete = testStaff.map(s => s.email);
+    const emailsToDelete = testStaff.map((s: typeof testStaff[0]) => s.email);
     await supabase
       .from('staff')
       .delete()
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       .select('*')
       .order('created_at', { ascending: false });
 
-    const doctors = allStaff?.filter(s => s.role === 'doctor') || [];
+    const doctors = allStaff?.filter((s: any) => s.role === 'doctor') || [];
 
     return NextResponse.json({
       success: true,
@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    const doctors = data?.filter(s => s.role === 'doctor') || [];
-    const allRoles = data ? Array.from(new Set(data.map(s => s.role))) : [];
+    const doctors = data?.filter((s: any) => s.role === 'doctor') || [];
+    const allRoles = data ? Array.from(new Set(data.map((s: any) => s.role))) : [];
 
     console.log('Staff diagnostic:', {
       total: data?.length || 0,
