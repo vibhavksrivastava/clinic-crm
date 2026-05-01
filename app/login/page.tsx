@@ -11,7 +11,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [setupLoading, setSetupLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,34 +70,6 @@ export default function LoginPage() {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSetupDemo = async () => {
-    setSetupLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ setupKey: 'clinic-crm-setup-2026' }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('✅ Demo user created successfully!\n\nYou can now login with:\nEmail: admin@clinic.com\nPassword: demo123');
-        setEmail('admin@clinic.com');
-        setPassword('demo123');
-      } else {
-        setError(data.error || 'Failed to create demo user');
-      }
-    } catch (err) {
-      console.error('Setup error:', err);
-      setError('Failed to initialize demo user');
-    } finally {
-      setSetupLoading(false);
     }
   };
 
@@ -199,21 +170,6 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        {/* Demo Credentials Info */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-          <p className="font-semibold mb-2">Demo Credentials:</p>
-          <p>Email: <code className="bg-white px-2 py-1 rounded">admin@clinic.com</code></p>
-          <p>Password: <code className="bg-white px-2 py-1 rounded">demo123</code></p>
-          <button
-            type="button"
-            onClick={handleSetupDemo}
-            disabled={setupLoading}
-            className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded transition"
-          >
-            {setupLoading ? 'Creating Demo User...' : '🚀 Initialize Demo User'}
-          </button>
-        </div>
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600">
