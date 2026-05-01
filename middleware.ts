@@ -5,7 +5,7 @@ export const config = {
 };
 
 // Routes that don't require authentication
-const publicRoutes = ['/api/auth', '/login', '/signup', '/forgot-password'];
+const publicRoutes = ['/', '/api/auth', '/login', '/signup', '/forgot-password'];
 
 /**
  * Main middleware function exported for Next.js
