@@ -3,15 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+// Create a safe Supabase client that doesn't throw during build
+let supabaseInstance: any = null;
+
+// Only initialize if we have the required environment variables
+if (supabaseUrl && supabaseKey) {
+  supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+} else if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+  // Only log warning during server-side runtime in production, not during build
+  console.warn('Missing Supabase environment variables - database features will not be available');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+export const supabase = supabaseInstance;
 
-export default supabase;
+// Default export for backward compatibility
+export default supabaseInstance;
