@@ -439,11 +439,11 @@ export default function PatientsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Patient Management</h1>
-          <p className="mt-2 text-gray-600">Search patients and book appointments</p>
-          <p className="mt-2 text-sm text-gray-500">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">Patient Management</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-600">Search patients and book appointments</p>
+          <p className="mt-2 text-xs sm:text-sm text-gray-500">
             📊 Doctors available: <span className="font-bold text-blue-600">{staff.filter(s => s.role === 'doctor').length}</span> | 
             Total staff: <span className="font-bold">{staff.length}</span>
           </p>
@@ -453,7 +453,7 @@ export default function PatientsPage() {
         {!showForm && !selectedPatient && (
           <button
             onClick={() => setShowForm(true)}
-            className="mb-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+            className="mb-6 w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-blue-700 transition"
           >
             + Add New Patient
           </button>
@@ -461,12 +461,12 @@ export default function PatientsPage() {
 
         {/* Add Patient Form */}
         {showForm && !selectedPatient && (
-          <div className="mb-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="mb-8 bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">
               {editingId ? 'Edit Patient' : 'Add New Patient'}
             </h2>
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <input
                   type="text"
                   placeholder="First Name"
@@ -475,7 +475,7 @@ export default function PatientsPage() {
                     setFormData({ ...formData, first_name: e.target.value })
                   }
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="text"
@@ -485,11 +485,11 @@ export default function PatientsPage() {
                     setFormData({ ...formData, last_name: e.target.value })
                   }
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <input
                   type="email"
                   placeholder="Email"
@@ -497,7 +497,7 @@ export default function PatientsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="tel"
@@ -506,11 +506,11 @@ export default function PatientsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <input
                   type="date"
                   placeholder="Date of Birth"
@@ -518,7 +518,7 @@ export default function PatientsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, date_of_birth: e.target.value })
                   }
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -528,21 +528,21 @@ export default function PatientsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, address: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                 rows={3}
               ></textarea>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-green-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-green-700 transition"
                 >
                   {editingId ? 'Update Patient' : 'Create Patient'}
                 </button>
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition"
+                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-gray-400 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-gray-500 transition"
                 >
                   Cancel
                 </button>
@@ -553,7 +553,7 @@ export default function PatientsPage() {
 
         {/* Search and Patient Selection Interface */}
         {!selectedPatient && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Search Bar and Patient List */}
             <div className="lg:col-span-1">
               <div className="mb-6">

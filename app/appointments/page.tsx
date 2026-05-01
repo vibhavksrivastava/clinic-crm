@@ -600,18 +600,18 @@ export default function AppointmentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div>
             <button
               onClick={() => router.push(dashboardUrl)}
-              className="text-blue-600 hover:text-blue-900 font-semibold mb-2 flex items-center gap-2"
+              className="text-blue-600 hover:text-blue-900 font-semibold mb-2 flex items-center gap-2 text-sm sm:text-base"
             >
               ← Back to Dashboard
             </button>
-            <h1 className="text-4xl font-bold text-gray-900">Appointment Management</h1>
-            <p className="mt-2 text-gray-600">View and manage patient appointments</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">Appointment Management</h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600">View and manage patient appointments</p>
           </div>
         </div>
 
@@ -619,22 +619,22 @@ export default function AppointmentsPage() {
         {!showForm && (userContext?.roleType === 'receptionist' || userContext?.roleType === 'clinic_admin') && (
           <button
             onClick={() => setShowForm(true)}
-            className="mb-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+            className="mb-6 w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-blue-700 transition"
           >
             + Schedule Appointment
           </button>
         )}
 
         {showForm && (
-          <div className="mb-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">Schedule New Appointment</h2>
+          <div className="mb-8 bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">Schedule New Appointment</h2>
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <select
                   value={formData.patient_id}
                   onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Patient</option>
                   {patients.map((p) => (
@@ -647,7 +647,7 @@ export default function AppointmentsPage() {
                   value={formData.staff_id}
                   onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Doctor</option>
                   {staff
@@ -660,28 +660,28 @@ export default function AppointmentsPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <input
                   type="date"
                   value={formData.appointment_date}
                   onChange={(e) => setFormData({ ...formData, appointment_date: e.target.value })}
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="time"
                   value={formData.appointment_time}
                   onChange={(e) => setFormData({ ...formData, appointment_time: e.target.value })}
                   required
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                 <select
                   value={formData.duration_minutes}
                   onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="15">15 minutes</option>
                   <option value="30">30 minutes</option>
@@ -691,7 +691,7 @@ export default function AppointmentsPage() {
                 <select
                   value={formData.appointment_type}
                   onChange={(e) => setFormData({ ...formData, appointment_type: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="consultation">Consultation</option>
                   <option value="follow-up">Follow-up</option>
@@ -703,21 +703,21 @@ export default function AppointmentsPage() {
                 placeholder="Notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                 rows={3}
               ></textarea>
 
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"
+                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-green-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-green-700"
                 >
                   Schedule Appointment
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
+                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-gray-400 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-gray-500"
                 >
                   Cancel
                 </button>
@@ -727,21 +727,21 @@ export default function AppointmentsPage() {
         )}
 
         {userContext?.roleType === 'doctor' && (
-          <div className="mb-6 bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mb-6 bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Doctor Reminder</h2>
-                <p className="text-sm text-gray-600">Daily appointment summary for your clinic day.</p>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Doctor Reminder</h2>
+                <p className="text-xs sm:text-sm text-gray-600">Daily appointment summary for your clinic day.</p>
               </div>
-              {doctorRemindersLoading && <span className="text-sm text-gray-500">Loading reminders...</span>}
+              {doctorRemindersLoading && <span className="text-xs sm:text-sm text-gray-500">Loading reminders...</span>}
             </div>
             {doctorReminders.length === 0 ? (
-              <p className="text-gray-600">No reminders available.</p>
+              <p className="text-sm text-gray-600">No reminders available.</p>
             ) : (
               doctorReminders.map((reminder) => (
-                <div key={reminder.appointment_id} className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">{reminder.title}</h3>
-                  <pre className="whitespace-pre-wrap text-gray-700">{reminder.message}</pre>
+                <div key={reminder.appointment_id} className="rounded-lg border border-blue-100 bg-blue-50 p-3 sm:p-4 mb-3">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">{reminder.title}</h3>
+                  <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans">{reminder.message}</pre>
                 </div>
               ))
             )}
@@ -749,14 +749,14 @@ export default function AppointmentsPage() {
         )}
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-2 border-b border-gray-200 overflow-x-auto">
+        <div className="mb-6 flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
           {['scheduled', 'ongoing', 'completed', 'cancelled'].map((tab) => {
             const tabCount = appointments.filter((apt) => apt.status === tab).length;
             return (
               <button
                 key={tab}
                 onClick={() => setAppointmentView(tab as any)}
-                className={`px-6 py-3 font-semibold border-b-2 transition capitalize ${
+                className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition capitalize whitespace-nowrap ${
                   appointmentView === tab
                     ? 'text-blue-600 border-blue-600'
                     : 'text-gray-600 border-transparent hover:text-gray-900'
@@ -768,162 +768,298 @@ export default function AppointmentsPage() {
           })}
         </div>
 
-        {/* Appointments Table */}
+        {/* Appointments Table/Cards */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading appointments...</div>
+            <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">Loading appointments...</div>
           ) : tableData.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No {appointmentView} appointments available.</div>
+            <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">No {appointmentView} appointments available.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Patient</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Doctor</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Date & Time</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Type</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Fee</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Payment</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {tableData.map((apt) => (
-                    <tr key={apt.id} className="hover:bg-gray-50">
-                      <td
-                        className="px-6 py-4 text-sm cursor-pointer text-blue-600 hover:underline"
-                        onClick={() => {
-                          setSelectedPatient(apt);
-                          setShowPatientDetails(true);
-                        }}
-                      >
-                        {apt.patients?.first_name} {apt.patients?.last_name}
-                      </td>
-                      <td className="px-6 py-4 text-sm">{apt.staff?.first_name} {apt.staff?.last_name}</td>
-                      <td className="px-6 py-4 text-sm">{new Date(apt.appointment_date).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-sm capitalize">{apt.appointment_type}</td>
-                      <td className="px-6 py-4 text-sm">
-                        {apt.status === 'completed' && invoices[apt.id]
-                          ? `$${invoices[apt.id].amount?.toFixed(2) || '0.00'}`
-                          : `$${apt.fee_amount?.toFixed(2) || '-'}`}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {invoices[apt.id] ? (
-                          <div className="space-y-1">
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                invoices[apt.id].status === 'paid'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              {invoices[apt.id].status}
-                            </span>
-                            {invoices[apt.id].amount_paid > 0 && (
-                              <div className="text-xs text-gray-600 mt-1">
-                                Paid: ${invoices[apt.id].amount_paid?.toFixed(2) || '0.00'}
-                              </div>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Patient</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Doctor</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Date & Time</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Type</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Fee</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Payment</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {tableData.map((apt) => (
+                      <tr key={apt.id} className="hover:bg-gray-50">
+                        <td
+                          className="px-4 sm:px-6 py-4 text-xs sm:text-sm cursor-pointer text-blue-600 hover:underline"
+                          onClick={() => {
+                            setSelectedPatient(apt);
+                            setShowPatientDetails(true);
+                          }}
+                        >
+                          {apt.patients?.first_name} {apt.patients?.last_name}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">{apt.staff?.first_name} {apt.staff?.last_name}</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">{new Date(apt.appointment_date).toLocaleString()}</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm capitalize">{apt.appointment_type}</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">
+                          {apt.status === 'completed' && invoices[apt.id]
+                            ? `$${invoices[apt.id].amount?.toFixed(2) || '0.00'}`
+                            : `$${apt.fee_amount?.toFixed(2) || '-'}`}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">
+                          {invoices[apt.id] ? (
+                            <div className="space-y-1">
+                              <span
+                                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                                  invoices[apt.id].status === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}
+                              >
+                                {invoices[apt.id].status}
+                              </span>
+                              {invoices[apt.id].amount_paid > 0 && (
+                                <div className="text-xs text-gray-600 mt-1">
+                                  Paid: ${invoices[apt.id].amount_paid?.toFixed(2) || '0.00'}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm space-y-2">
+                          {apt.status === 'scheduled' && userContext?.roleType === 'doctor' && (
+                            <>
+                              <button
+                                onClick={() => handleMarkOngoing(apt.id)}
+                                className="block text-yellow-600 hover:text-yellow-900 font-semibold"
+                              >
+                                Mark Ongoing
+                              </button>
+                              <button
+                                onClick={() => handleCompleteAppointment(apt.id)}
+                                className="block text-green-600 hover:text-green-900 font-semibold"
+                              >
+                                Complete
+                              </button>
+                            </>
+                          )}
+                          {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
+                            <>
+                              <button
+                                onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
+                                className="block text-blue-600 hover:text-blue-900 font-semibold"
+                              >
+                                Rx Write Prescription
+                              </button>
+                              <button
+                                onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                                className="block text-purple-600 hover:text-purple-900 font-semibold"
+                              >
+                                📋 View Prescriptions
+                              </button>
+                              <button
+                                onClick={() => handleCompleteAppointment(apt.id)}
+                                className="block text-green-600 hover:text-green-900 font-semibold"
+                              >
+                                Complete
+                              </button>
+                            </>
+                          )}
+                          {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
+                            ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
+                              <button
+                                onClick={() => handleCancelAppointment(apt.id)}
+                                className="block text-red-600 hover:text-red-900 font-semibold"
+                              >
+                                Cancel
+                              </button>
                             )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-500">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm space-y-2">
-                        {apt.status === 'scheduled' && userContext?.roleType === 'doctor' && (
-                          <>
+                          {apt.status === 'completed' && userContext?.roleType === 'receptionist' && (
                             <button
-                              onClick={() => handleMarkOngoing(apt.id)}
-                              className="block text-yellow-600 hover:text-yellow-900 font-semibold"
-                            >
-                              Mark Ongoing
-                            </button>
-                            <button
-                              onClick={() => handleCompleteAppointment(apt.id)}
-                              className="block text-green-600 hover:text-green-900 font-semibold"
-                            >
-                              Complete
-                            </button>
-                          </>
-                        )}
-                        {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
-                          <>
-                            <button
-                              onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
+                              onClick={async () => {
+                                setPaymentAppointmentId(apt.id);
+                                const invoiceAmount = await fetchInvoiceForAppointment(apt.id);
+                                const pendingAmt = invoiceAmount || apt.fee_amount || 0;
+                                setPendingAmount(pendingAmt);
+                                setPaymentData({
+                                  amount_paid: pendingAmt.toString(),
+                                  payment_method: 'cash',
+                                  payment_reference: '',
+                                  notes: '',
+                                });
+                                setShowPaymentForm(true);
+                              }}
                               className="block text-blue-600 hover:text-blue-900 font-semibold"
                             >
-                              Rx Write Prescription
+                              Record Payment
                             </button>
+                          )}
+                          {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
                             <button
                               onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
                               className="block text-purple-600 hover:text-purple-900 font-semibold"
                             >
                               📋 View Prescriptions
                             </button>
-                            <button
-                              onClick={() => handleCompleteAppointment(apt.id)}
-                              className="block text-green-600 hover:text-green-900 font-semibold"
-                            >
-                              Complete
-                            </button>
-                          </>
-                        )}
-                        {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
-                          ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
-                            <button
-                              onClick={() => handleCancelAppointment(apt.id)}
-                              className="block text-red-600 hover:text-red-900 font-semibold"
-                            >
-                              Cancel
-                            </button>
                           )}
-                        {apt.status === 'completed' && userContext?.roleType === 'receptionist' && (
-                          <button
-                            onClick={async () => {
-                              setPaymentAppointmentId(apt.id);
-                              // Fetch invoice to get pending amount
-                              const invoiceAmount = await fetchInvoiceForAppointment(apt.id);
-                              const pendingAmt = invoiceAmount || apt.fee_amount || 0;
-                              setPendingAmount(pendingAmt);
-                              setPaymentData({
-                                amount_paid: pendingAmt.toString(),
-                                payment_method: 'cash',
-                                payment_reference: '',
-                                notes: '',
-                              });
-                              setShowPaymentForm(true);
-                            }}
-                            className="block text-blue-600 hover:text-blue-900 font-semibold"
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden divide-y divide-gray-200">
+                {tableData.map((apt) => (
+                  <div key={apt.id} className="p-4 hover:bg-gray-50 space-y-3">
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedPatient(apt);
+                        setShowPatientDetails(true);
+                      }}
+                    >
+                      <h3 className="font-semibold text-blue-600 text-sm">
+                        {apt.patients?.first_name} {apt.patients?.last_name}
+                      </h3>
+                      <p className="text-xs text-gray-600">Doctor: {apt.staff?.first_name} {apt.staff?.last_name}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-gray-600">Date & Time</p>
+                        <p className="font-semibold">{new Date(apt.appointment_date).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Type</p>
+                        <p className="font-semibold capitalize">{apt.appointment_type}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Fee</p>
+                        <p className="font-semibold">
+                          {apt.status === 'completed' && invoices[apt.id]
+                            ? `$${invoices[apt.id].amount?.toFixed(2) || '0.00'}`
+                            : `$${apt.fee_amount?.toFixed(2) || '-'}`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Payment</p>
+                        {invoices[apt.id] ? (
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                              invoices[apt.id].status === 'paid'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
                           >
-                            Record Payment
-                          </button>
+                            {invoices[apt.id].status}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 text-xs">-</span>
                         )}
-                        {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
+                      </div>
+                    </div>
+
+                    {/* Mobile Actions */}
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {apt.status === 'scheduled' && userContext?.roleType === 'doctor' && (
+                        <>
+                          <button
+                            onClick={() => handleMarkOngoing(apt.id)}
+                            className="flex-1 text-xs px-2 py-1 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 font-semibold rounded"
+                          >
+                            Ongoing
+                          </button>
+                          <button
+                            onClick={() => handleCompleteAppointment(apt.id)}
+                            className="flex-1 text-xs px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 font-semibold rounded"
+                          >
+                            Complete
+                          </button>
+                        </>
+                      )}
+                      {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
+                        <>
+                          <button
+                            onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
+                            className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
+                          >
+                            Rx
+                          </button>
                           <button
                             onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
-                            className="block text-purple-600 hover:text-purple-900 font-semibold"
+                            className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
                           >
-                            📋 View Prescriptions
+                            View Rx
+                          </button>
+                          <button
+                            onClick={() => handleCompleteAppointment(apt.id)}
+                            className="flex-1 text-xs px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 font-semibold rounded"
+                          >
+                            Done
+                          </button>
+                        </>
+                      )}
+                      {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
+                        ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
+                          <button
+                            onClick={() => handleCancelAppointment(apt.id)}
+                            className="flex-1 text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded"
+                          >
+                            Cancel
                           </button>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      {apt.status === 'completed' && userContext?.roleType === 'receptionist' && (
+                        <button
+                          onClick={async () => {
+                            setPaymentAppointmentId(apt.id);
+                            const invoiceAmount = await fetchInvoiceForAppointment(apt.id);
+                            const pendingAmt = invoiceAmount || apt.fee_amount || 0;
+                            setPendingAmount(pendingAmt);
+                            setPaymentData({
+                              amount_paid: pendingAmt.toString(),
+                              payment_method: 'cash',
+                              payment_reference: '',
+                              notes: '',
+                            });
+                            setShowPaymentForm(true);
+                          }}
+                          className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
+                        >
+                          Record Payment
+                        </button>
+                      )}
+                      {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
+                        <button
+                          onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                          className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
+                        >
+                          View Rx
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
       {/* Patient Details Modal */}
       {showPatientDetails && selectedPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Patient Details</h2>
+                <h2 className="text-lg sm:text-2xl font-bold">Patient Details</h2>
                 <button
                   onClick={() => setShowPatientDetails(false)}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -932,28 +1068,35 @@ export default function AppointmentsPage() {
                 </button>
               </div>
               {selectedPatient.patients && (
-                <div className="space-y-3">
-                  <p>
-                    <strong>Name:</strong> {selectedPatient.patients.first_name} {selectedPatient.patients.last_name}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {selectedPatient.patients.email || '-'}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {selectedPatient.patients.phone || '-'}
-                  </p>
-                  <p>
-                    <strong>Date of Birth:</strong> {selectedPatient.patients.date_of_birth || '-'}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {selectedPatient.patients.address || '-'}
-                  </p>
-                  <p>
-                    <strong>Appointment Type:</strong> {selectedPatient.appointment_type}
-                  </p>
-                  <p>
-                    <strong>Appointment Date:</strong> {new Date(selectedPatient.appointment_date).toLocaleString()}
-                  </p>
+                <div className="space-y-3 text-sm sm:text-base">
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Name:</strong></p>
+                    <p className="font-semibold">{selectedPatient.patients.first_name} {selectedPatient.patients.last_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Email:</strong></p>
+                    <p className="font-semibold">{selectedPatient.patients.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Phone:</strong></p>
+                    <p className="font-semibold">{selectedPatient.patients.phone || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Date of Birth:</strong></p>
+                    <p className="font-semibold">{selectedPatient.patients.date_of_birth || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Address:</strong></p>
+                    <p className="font-semibold break-words">{selectedPatient.patients.address || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Appointment Type:</strong></p>
+                    <p className="font-semibold">{selectedPatient.appointment_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Appointment Date:</strong></p>
+                    <p className="font-semibold">{new Date(selectedPatient.appointment_date).toLocaleString()}</p>
+                  </div>
                 </div>
               )}
             </div>
