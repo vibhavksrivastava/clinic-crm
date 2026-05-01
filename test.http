@@ -1,0 +1,142 @@
+### ==========================================
+### CLINIC CRM API TEST REQUESTS
+### ==========================================
+### Click "Send Request" above each request to execute
+### Results appear in the response panel on the right
+
+### ==========================================
+### PATIENTS ENDPOINTS
+### ==========================================
+
+### 1. GET all patients
+GET http://localhost:3000/api/patients
+
+### 2. CREATE a new patient
+POST http://localhost:3000/api/patients
+Content-Type: application/json
+
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "+1-555-0123",
+  "date_of_birth": "1990-01-15",
+  "address": "123 Main St, Springfield, IL 62701"
+}
+
+### 3. CREATE another patient
+POST http://localhost:3000/api/patients
+Content-Type: application/json
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane.smith@example.com",
+  "phone": "+1-555-0124",
+  "date_of_birth": "1985-06-20",
+  "address": "456 Oak Ave, Springfield, IL 62702"
+}
+
+### ==========================================
+### STAFF ENDPOINTS
+### ==========================================
+
+### 4. GET all staff
+GET http://localhost:3000/api/staff
+
+### 5. CREATE a doctor
+POST http://localhost:3000/api/staff
+Content-Type: application/json
+
+{
+  "first_name": "Dr.",
+  "last_name": "Smith",
+  "email": "dr.smith@clinic.com",
+  "role": "Doctor",
+  "phone": "+1-555-0200",
+  "specialization": "General Practice"
+}
+
+### 6. CREATE a nurse
+POST http://localhost:3000/api/staff
+Content-Type: application/json
+
+{
+  "first_name": "Sarah",
+  "last_name": "Johnson",
+  "email": "sarah.johnson@clinic.com",
+  "role": "Nurse",
+  "phone": "+1-555-0201",
+  "specialization": "General Nursing"
+}
+
+### ==========================================
+### APPOINTMENTS ENDPOINTS
+### ==========================================
+
+### 7. GET all appointments
+GET http://localhost:3000/api/appointments
+
+### 8. CREATE an appointment
+### IMPORTANT: Replace patient_id and staff_id with actual UUIDs from previous responses
+POST http://localhost:3000/api/appointments
+Content-Type: application/json
+
+{
+  "patient_id": "REPLACE_WITH_PATIENT_UUID",
+  "staff_id": "REPLACE_WITH_STAFF_UUID",
+  "appointment_date": "2024-05-20T14:00:00Z",
+  "duration_minutes": 30,
+  "notes": "Routine checkup"
+}
+
+### ==========================================
+### PRESCRIPTIONS ENDPOINTS
+### ==========================================
+
+### 9. GET all prescriptions
+GET http://localhost:3000/api/prescriptions
+
+### 10. CREATE a prescription
+### IMPORTANT: Replace patient_id and staff_id with actual UUIDs
+POST http://localhost:3000/api/prescriptions
+Content-Type: application/json
+
+{
+  "patient_id": "REPLACE_WITH_PATIENT_UUID",
+  "staff_id": "REPLACE_WITH_STAFF_UUID",
+  "medication_name": "Aspirin",
+  "dosage": "500mg",
+  "frequency": "Once daily",
+  "quantity": 30,
+  "issued_date": "2024-05-15",
+  "expiry_date": "2025-05-15",
+  "notes": "For pain relief as needed"
+}
+
+### ==========================================
+### INVOICES ENDPOINTS
+### ==========================================
+
+### 11. GET all invoices
+GET http://localhost:3000/api/invoices
+
+### 12. CREATE an invoice
+### IMPORTANT: Replace patient_id with actual UUID
+POST http://localhost:3000/api/invoices
+Content-Type: application/json
+
+{
+  "patient_id": "REPLACE_WITH_PATIENT_UUID",
+  "appointment_id": null,
+  "amount": 150.00,
+  "due_date": "2024-06-15",
+  "notes": "Consultation fee"
+}
+
+### ==========================================
+### API HEALTH CHECK
+### ==========================================
+
+### 13. GET API status
+GET http://localhost:3000/api
