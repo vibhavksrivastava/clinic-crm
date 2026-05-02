@@ -25,6 +25,19 @@ interface Vitals {
   height_unit?: 'cm' | 'inches';
 }
 
+interface FormVitals {
+  blood_pressure_systolic: string;
+  blood_pressure_diastolic: string;
+  heart_rate: string;
+  temperature: string;
+  oxygen_saturation: string;
+  weight: string;
+  height: string;
+  temperature_unit: 'C' | 'F';
+  weight_unit: 'kg' | 'lbs';
+  height_unit: 'cm' | 'inches';
+}
+
 interface Prescription {
   id: string;
   patient_id: string;
@@ -222,24 +235,37 @@ export function PrescriptionsContent() {
   };
 
   const handleEdit = (rx: Prescription) => {
+    const convertedVitals: FormVitals = rx.vitals ? {
+      blood_pressure_systolic: rx.vitals.blood_pressure_systolic?.toString() || '',
+      blood_pressure_diastolic: rx.vitals.blood_pressure_diastolic?.toString() || '',
+      heart_rate: rx.vitals.heart_rate?.toString() || '',
+      temperature: rx.vitals.temperature?.toString() || '',
+      oxygen_saturation: rx.vitals.oxygen_saturation?.toString() || '',
+      weight: rx.vitals.weight?.toString() || '',
+      height: rx.vitals.height?.toString() || '',
+      temperature_unit: rx.vitals.temperature_unit || 'C',
+      weight_unit: rx.vitals.weight_unit || 'kg',
+      height_unit: rx.vitals.height_unit || 'cm',
+    } : {
+      blood_pressure_systolic: '',
+      blood_pressure_diastolic: '',
+      heart_rate: '',
+      temperature: '',
+      oxygen_saturation: '',
+      weight: '',
+      height: '',
+      temperature_unit: 'C',
+      weight_unit: 'kg',
+      height_unit: 'cm',
+    };
+
     setFormData({
       patient_id: rx.patient_id,
       user_id: rx.user_id || '',
       issued_date: rx.issued_date.split('T')[0],
       status: rx.status,
       notes: rx.notes || '',
-      vitals: rx.vitals || {
-        blood_pressure_systolic: '',
-        blood_pressure_diastolic: '',
-        heart_rate: '',
-        temperature: '',
-        oxygen_saturation: '',
-        weight: '',
-        height: '',
-        temperature_unit: 'C',
-        weight_unit: 'kg',
-        height_unit: 'cm',
-      },
+      vitals: convertedVitals,
     });
     setMedicines(rx.medications && Array.isArray(rx.medications) && rx.medications.length > 0 ? rx.medications : [
       { id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
