@@ -59,6 +59,10 @@ export default function LoginPage() {
         // Redirect based on role
         if (roleType === 'admin' || roleType === 'super_admin' || roleType === 'clinic_admin' || roleType === 'branch_admin') {
           router.push('/admin');
+        } else if (roleType === 'doctor') {
+          router.push('/appointments');
+        } else if (roleType === 'receptionist') {
+          router.push('/patients');
         } else {
           router.push('/dashboard');
         }

@@ -12,11 +12,25 @@ interface Medicine {
   quantity: number;
 }
 
+interface Vitals {
+  blood_pressure_systolic?: number;
+  blood_pressure_diastolic?: number;
+  heart_rate?: number;
+  temperature?: number;
+  oxygen_saturation?: number;
+  weight?: number;
+  height?: number;
+  temperature_unit?: 'C' | 'F';
+  weight_unit?: 'kg' | 'lbs';
+  height_unit?: 'cm' | 'inches';
+}
+
 interface Prescription {
   id: string;
   patient_id: string;
   user_id?: string;
   medications: Medicine[];
+  vitals?: Vitals;
   issued_date: string;
   status: string;
   notes?: string;
@@ -83,6 +97,18 @@ export function PrescriptionsContent() {
     issued_date: new Date().toISOString().split('T')[0],
     status: 'active',
     notes: '',
+    vitals: {
+      blood_pressure_systolic: '',
+      blood_pressure_diastolic: '',
+      heart_rate: '',
+      temperature: '',
+      oxygen_saturation: '',
+      weight: '',
+      height: '',
+      temperature_unit: 'C' as 'C' | 'F',
+      weight_unit: 'kg' as 'kg' | 'lbs',
+      height_unit: 'cm' as 'cm' | 'inches',
+    },
   });
 
   // Check for view parameter in URL
@@ -162,12 +188,24 @@ export function PrescriptionsContent() {
       const method = editingId ? 'PUT' : 'POST';
       const url = editingId ? `/api/prescriptions?id=${editingId}` : '/api/prescriptions';
 
+      // Convert vitals to numbers, filtering out empty values
+      const vitalsCleaned = Object.entries(formData.vitals || {}).reduce((acc, [key, value]) => {
+        if (value === '' || value === null) return acc;
+        if (['temperature_unit', 'weight_unit', 'height_unit'].includes(key)) {
+          acc[key] = value;
+        } else {
+          acc[key] = parseFloat(value as string) || undefined;
+        }
+        return acc;
+      }, {} as any);
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patient_id: formData.patient_id,
           medications: medicines,
+          vitals: vitalsCleaned,
           issued_date: formData.issued_date,
           status: formData.status,
           notes: formData.notes,
@@ -190,6 +228,18 @@ export function PrescriptionsContent() {
       issued_date: rx.issued_date.split('T')[0],
       status: rx.status,
       notes: rx.notes || '',
+      vitals: rx.vitals || {
+        blood_pressure_systolic: '',
+        blood_pressure_diastolic: '',
+        heart_rate: '',
+        temperature: '',
+        oxygen_saturation: '',
+        weight: '',
+        height: '',
+        temperature_unit: 'C',
+        weight_unit: 'kg',
+        height_unit: 'cm',
+      },
     });
     setMedicines(rx.medications && Array.isArray(rx.medications) && rx.medications.length > 0 ? rx.medications : [
       { id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
@@ -217,6 +267,18 @@ export function PrescriptionsContent() {
       issued_date: new Date().toISOString().split('T')[0],
       status: 'active',
       notes: '',
+      vitals: {
+        blood_pressure_systolic: '',
+        blood_pressure_diastolic: '',
+        heart_rate: '',
+        temperature: '',
+        oxygen_saturation: '',
+        weight: '',
+        height: '',
+        temperature_unit: 'C',
+        weight_unit: 'kg',
+        height_unit: 'cm',
+      },
     });
     setEditingId(null);
     setShowForm(false);
@@ -291,6 +353,132 @@ export function PrescriptionsContent() {
                   <option value="refilled">Refilled</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Vitals Section */}
+            <div className="mb-6 bg-white rounded-lg p-6 border-2 border-green-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Patient Vitals (Optional)</h3>
+              
+              {/* Blood Pressure */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Pressure (mmHg)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Systolic"
+                      value={(formData.vitals?.blood_pressure_systolic as any) || ''}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, blood_pressure_systolic: e.target.value as any } })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Systolic</p>
+                  </div>
+                  <div className="flex items-end pb-2">
+                    <span className="text-lg font-bold text-gray-400">/</span>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Diastolic"
+                      value={(formData.vitals?.blood_pressure_diastolic as any) || ''}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, blood_pressure_diastolic: e.target.value as any } })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Diastolic</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Heart Rate, Temperature, SpO2 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Heart Rate (bpm)</label>
+                  <input
+                    type="number"
+                    placeholder="60-100"
+                    value={(formData.vitals?.heart_rate as any) || ''}
+                    onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, heart_rate: e.target.value as any } })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Temperature</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Temp"
+                      value={(formData.vitals?.temperature as any) || ''}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, temperature: e.target.value as any } })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <select
+                      value={formData.vitals?.temperature_unit || 'C'}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, temperature_unit: e.target.value as 'C' | 'F' } })}
+                      className="px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="C">°C</option>
+                      <option value="F">°F</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Oxygen Saturation (%)</label>
+                  <input
+                    type="number"
+                    placeholder="95-100"
+                    value={(formData.vitals?.oxygen_saturation as any) || ''}
+                    onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, oxygen_saturation: e.target.value as any } })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Weight and Height */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Weight</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Weight"
+                      value={(formData.vitals?.weight as any) || ''}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, weight: e.target.value as any } })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <select
+                      value={formData.vitals?.weight_unit || 'kg'}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, weight_unit: e.target.value as 'kg' | 'lbs' } })}
+                      className="px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="kg">kg</option>
+                      <option value="lbs">lbs</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Height</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Height"
+                      value={(formData.vitals?.height as any) || ''}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, height: e.target.value as any } })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <select
+                      value={formData.vitals?.height_unit || 'cm'}
+                      onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, height_unit: e.target.value as 'cm' | 'inches' } })}
+                      className="px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="cm">cm</option>
+                      <option value="inches">inches</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -520,7 +708,7 @@ export function PrescriptionsContent() {
           {/* Prescription Details - Right Column */}
           <div className="lg:col-span-2">
             {selectedPrescription ? (
-              <div className="bg-white rounded-lg shadow-lg border-4 border-blue-200 overflow-hidden">
+              <div id={`prescription-${selectedPrescription.id}`} className="bg-white rounded-lg shadow-lg border-4 border-blue-200 overflow-hidden">
                 {/* Prescription Pad Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
                   <div className="text-center mb-4">
@@ -563,6 +751,55 @@ export function PrescriptionsContent() {
                       Dr. {selectedPrescription.users?.first_name} {selectedPrescription.users?.last_name}
                     </div>
                   </div>
+
+                  {/* Vitals Information */}
+                  {selectedPrescription.vitals && Object.values(selectedPrescription.vitals).some(v => v) && (
+                    <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                      <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-3">📊 Patient Vitals</div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {selectedPrescription.vitals.blood_pressure_systolic && (
+                          <div className="bg-blue-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Blood Pressure</div>
+                            <div className="font-semibold text-gray-900">
+                              {selectedPrescription.vitals.blood_pressure_systolic}/{selectedPrescription.vitals.blood_pressure_diastolic} mmHg
+                            </div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.heart_rate && (
+                          <div className="bg-red-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Heart Rate</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.heart_rate} bpm</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.temperature && (
+                          <div className="bg-orange-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Temperature</div>
+                            <div className="font-semibold text-gray-900">
+                              {selectedPrescription.vitals.temperature}°{selectedPrescription.vitals.temperature_unit}
+                            </div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.oxygen_saturation && (
+                          <div className="bg-green-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">SpO2</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.oxygen_saturation}%</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.weight && (
+                          <div className="bg-purple-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Weight</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.weight} {selectedPrescription.vitals.weight_unit}</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.height && (
+                          <div className="bg-indigo-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Height</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.height} {selectedPrescription.vitals.height_unit}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Rx Symbol and Medications */}
                   <div className="mb-6">
@@ -656,16 +893,74 @@ export function PrescriptionsContent() {
                     <button
                       onClick={() => {
                         const element = document.getElementById(`prescription-${selectedPrescription.id}`);
-                        if (!element) return;
-                        const printWindow = window.open('', '', 'width=800,height=600');
-                        printWindow?.document.write(`
+                        if (!element) {
+                          alert('Error: Unable to find prescription content to print');
+                          return;
+                        }
+                        
+                        const printWindow = window.open('', '', 'width=900,height=1200');
+                        if (!printWindow) {
+                          alert('Error: Unable to open print window. Please check your browser popup settings.');
+                          return;
+                        }
+                        
+                        // Clone the element and remove action buttons
+                        const printContent = element.cloneNode(true) as HTMLElement;
+                        const actionsDiv = printContent.querySelector('.flex.gap-3.pt-4');
+                        if (actionsDiv) {
+                          actionsDiv.remove();
+                        }
+                        
+                        // Get all stylesheets from the main document
+                        const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+                        let styleHTML = '';
+                        
+                        styles.forEach((style) => {
+                          if (style.tagName === 'STYLE') {
+                            styleHTML += style.outerHTML;
+                          } else if (style.tagName === 'LINK') {
+                            styleHTML += style.outerHTML;
+                          }
+                        });
+                        
+                        printWindow.document.open();
+                        printWindow.document.write(`
+                          <!DOCTYPE html>
                           <html>
-                            <head><title>Print</title></head>
-                            <body>${element.innerHTML}</body>
+                            <head>
+                              <meta charset="UTF-8">
+                              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                              <title>Prescription</title>
+                              ${styleHTML}
+                              <style>
+                                @media print {
+                                  * { margin: 0 !important; padding: 0 !important; }
+                                  body { margin: 0 !important; padding: 0 !important; background: white !important; }
+                                  .no-print { display: none !important; }
+                                  .fixed { position: relative !important; }
+                                  html, body { height: 100% !important; }
+                                }
+                                body { 
+                                  font-family: system-ui, -apple-system, sans-serif;
+                                  background: white;
+                                  color: #333;
+                                  line-height: 1.5;
+                                }
+                              </style>
+                            </head>
+                            <body>
+                              ${printContent.outerHTML}
+                            </body>
                           </html>
                         `);
-                        printWindow?.document.close();
-                        printWindow?.print();
+                        printWindow.document.close();
+                        
+                        // Wait for styles to load before printing
+                        setTimeout(() => {
+                          printWindow.focus();
+                          printWindow.print();
+                          setTimeout(() => printWindow.close(), 1000);
+                        }, 500);
                       }}
                       className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
                     >

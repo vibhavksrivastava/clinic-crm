@@ -151,6 +151,46 @@ export default function InvoicingPage() {
     setShowForm(false);
   };
 
+  // Add print styles when component mounts
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @media print {
+        body { margin: 0; padding: 0; background: white; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .fixed { position: static !important; }
+        .bg-black { background-color: white !important; }
+        .no-print { display: none !important; }
+        .bg-opacity-50 { background-color: transparent !important; }
+        #invoice-print-modal { 
+          position: static !important;
+          inset: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          border: none !important;
+          box-shadow: none !important;
+          max-height: 100% !important;
+          overflow: visible !important;
+        }
+        #invoice-print-modal > * {
+          display: block !important;
+        }
+        .p-8 { padding: 20mm !important; max-width: 210mm; margin: 0 auto; }
+        .text-4xl { font-size: 24pt !important; }
+        .text-3xl { font-size: 18pt !important; }
+        .text-2xl { font-size: 14pt !important; }
+        .text-lg { font-size: 12pt !important; }
+        .text-base, body { font-size: 11pt !important; }
+        .text-sm { font-size: 10pt !important; }
+        .text-xs { font-size: 8pt !important; }
+        @page { margin: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
   const paidAmount = invoices
     .filter((inv) => inv.status === 'paid')
@@ -366,10 +406,10 @@ export default function InvoicingPage() {
 
         {/* Invoice Print Template Modal */}
         {selectedInvoice && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div id="invoice-print-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               {/* Header */}
-              <div className="bg-blue-600 px-8 py-4 flex justify-between items-center rounded-t-lg">
+              <div className="bg-blue-600 px-8 py-4 flex justify-between items-center rounded-t-lg no-print">
                 <h2 className="text-2xl font-bold text-white">Invoice</h2>
                 <button
                   onClick={() => setSelectedInvoice(null)}
@@ -476,9 +516,11 @@ export default function InvoicingPage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 pt-6">
+                <div className="flex gap-3 pt-6 no-print">
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => {
+                      window.print();
+                    }}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
                   >
                     🖨️ Print
