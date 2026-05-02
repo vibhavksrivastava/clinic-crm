@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
     // Execute SQL through Supabase's RPC endpoint
     const sqlStatements = [
       `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(50) DEFAULT 'consultation';`,
-      `CREATE INDEX IF NOT EXISTS idx_appointments_type ON appointments(appointment_type);`
+      `CREATE INDEX IF NOT EXISTS idx_appointments_type ON appointments(appointment_type);`,
+      `ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS vitals JSONB DEFAULT NULL;`,
+      `CREATE INDEX IF NOT EXISTS idx_prescriptions_vitals ON prescriptions USING GIN (vitals);`
     ];
 
     const results = [];
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Migration applied: Added appointment_type column to appointments table',
+      message: 'Migrations applied: Added appointment_type column and vitals column to prescriptions',
       details: results,
       timestamp: new Date().toISOString()
     });
@@ -87,7 +89,19 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     message: 'Migration API endpoint',
     instructions: 'POST with Bearer token to apply migrations',
-    note: 'To apply the appointment_type column migration, execute this SQL in Supabase SQL Editor:',
-    sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(50) DEFAULT 'consultation';`
+    note: 'To apply migrations manually, execute this SQL in Supabase SQL Editor:',
+    migrations: [
+      {
+        name: 'appointment_type',
+        sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS appointment_type VARCHAR(50) DEFAULT 'consultation';`
+      },
+      {
+        name: 'prescriptions_vitals',
+        sql: `
+          ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS vitals JSONB DEFAULT NULL;
+          CREATE INDEX IF NOT EXISTS idx_prescriptions_vitals ON prescriptions USING GIN (vitals);
+        `
+      }
+    ]
   });
 }

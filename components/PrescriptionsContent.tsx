@@ -687,6 +687,35 @@ export function PrescriptionsContent() {
                             <p className="text-xs text-gray-500 mt-2">
                               📅 {new Date(rx.issued_date).toLocaleDateString()}
                             </p>
+                            
+                            {/* Vitals Summary */}
+                            {rx.vitals && Object.values(rx.vitals).some(v => v) && (
+                              <div className="mt-3 pt-2 border-t border-gray-200 text-xs">
+                                <span className="font-semibold text-gray-700">📊 Vitals:</span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {rx.vitals.blood_pressure_systolic && (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      BP: {rx.vitals.blood_pressure_systolic}/{rx.vitals.blood_pressure_diastolic}
+                                    </span>
+                                  )}
+                                  {rx.vitals.heart_rate && (
+                                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
+                                      HR: {rx.vitals.heart_rate} bpm
+                                    </span>
+                                  )}
+                                  {rx.vitals.temperature && (
+                                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                                      Temp: {rx.vitals.temperature}°{rx.vitals.temperature_unit || 'C'}
+                                    </span>
+                                  )}
+                                  {rx.vitals.oxygen_saturation && (
+                                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      O₂: {rx.vitals.oxygen_saturation}%
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <span
                             className={`ml-2 px-2 py-1 text-xs font-bold rounded whitespace-nowrap ${

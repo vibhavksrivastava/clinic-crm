@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import Header from '@/components/Header';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -42,7 +41,7 @@ interface Appointment {
   }>;
   prescriptions?: Array<{
     id: string;
-    medications: any;
+    medications: Record<string, unknown>;
     status: string;
   }>;
 }
@@ -62,7 +61,6 @@ export default function AppointmentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [appointmentView, setAppointmentView] = useState<'scheduled' | 'ongoing' | 'completed' | 'cancelled'>('scheduled');
-  const [schedulingConflict, setSchedulingConflict] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Appointment | null>(null);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [formData, setFormData] = useState({
@@ -92,35 +90,24 @@ export default function AppointmentsPage() {
     payment_reference: '',
     notes: '',
   });
-  const [dashboardUrl, setDashboardUrl] = useState<string>('/dashboard');
 
-  useEffect(() => {
-    setDashboardUrl(getDashboardUrl());
-  }, []);
+  // Doctor vitals-specific states
+  const [showVitalsForm, setShowVitalsForm] = useState(false);
+  const [vitalsAppointmentId, setVitalsAppointmentId] = useState<string | null>(null);
+  const [vitalsData, setVitalsData] = useState({
+    blood_pressure_systolic: '',
+    blood_pressure_diastolic: '',
+    heart_rate: '',
+    temperature: '',
+    oxygen_saturation: '',
+    weight: '',
+    height: '',
+    temperature_unit: 'C' as 'C' | 'F',
+    weight_unit: 'kg' as 'kg' | 'lbs',
+    height_unit: 'cm' as 'cm' | 'inches',
+  });
 
-  useEffect(() => {
-    fetchData();
-    getUserRole();
-  }, []);
-
-  const getUserRole = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        // Parse JWT to get user info
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          setUserContext({
-            roleType: payload.role_type || payload.roleType,
-            userId: payload.sub || payload.userId,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error getting user role:', error);
-    }
-  };
+  const [dashboardUrl] = useState<string>(getDashboardUrl());
 
   const fetchData = async () => {
     try {
@@ -144,6 +131,30 @@ export default function AppointmentsPage() {
       setLoading(false);
     }
   };
+
+  const getUserRole = () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // Parse JWT to get user info
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          setUserContext({
+            roleType: payload.role_type || payload.roleType,
+            userId: payload.sub || payload.userId,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error getting user role:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    getUserRole();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +291,61 @@ export default function AppointmentsPage() {
     }
   };
 
+  const handleSaveVitals = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!vitalsAppointmentId) {
+      alert('Appointment ID not found');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/appointments/vitals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointment_id: vitalsAppointmentId,
+          vitals: {
+            blood_pressure_systolic: vitalsData.blood_pressure_systolic ? parseInt(vitalsData.blood_pressure_systolic) : null,
+            blood_pressure_diastolic: vitalsData.blood_pressure_diastolic ? parseInt(vitalsData.blood_pressure_diastolic) : null,
+            heart_rate: vitalsData.heart_rate ? parseInt(vitalsData.heart_rate) : null,
+            temperature: vitalsData.temperature ? parseFloat(vitalsData.temperature) : null,
+            oxygen_saturation: vitalsData.oxygen_saturation ? parseInt(vitalsData.oxygen_saturation) : null,
+            weight: vitalsData.weight ? parseFloat(vitalsData.weight) : null,
+            height: vitalsData.height ? parseFloat(vitalsData.height) : null,
+            temperature_unit: vitalsData.temperature_unit,
+            weight_unit: vitalsData.weight_unit,
+            height_unit: vitalsData.height_unit,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        setShowVitalsForm(false);
+        setVitalsData({
+          blood_pressure_systolic: '',
+          blood_pressure_diastolic: '',
+          heart_rate: '',
+          temperature: '',
+          oxygen_saturation: '',
+          weight: '',
+          height: '',
+          temperature_unit: 'C',
+          weight_unit: 'kg',
+          height_unit: 'cm',
+        });
+        fetchData();
+        alert('Vitals saved successfully!');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to save vitals');
+      }
+    } catch (error) {
+      console.error('Error saving vitals:', error);
+      alert('Error saving vitals');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       patient_id: '',
@@ -292,22 +358,6 @@ export default function AppointmentsPage() {
     });
     setEditingId(null);
     setShowForm(false);
-    setSchedulingConflict(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800';
-      case 'ongoing':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const filteredAppointments = appointments.filter((apt) => apt.status === appointmentView);
@@ -443,10 +493,10 @@ export default function AppointmentsPage() {
 
         {/* Tabs */}
         <div className="mb-6 flex gap-2 border-b border-gray-200 overflow-x-auto">
-          {['scheduled', 'ongoing', 'completed', 'cancelled'].map((tab) => (
+          {(['scheduled', 'ongoing', 'completed', 'cancelled'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setAppointmentView(tab as any)}
+              onClick={() => setAppointmentView(tab)}
               className={`px-6 py-3 font-semibold border-b-2 transition capitalize ${
                 appointmentView === tab
                   ? 'text-blue-600 border-blue-600'
@@ -527,12 +577,23 @@ export default function AppointmentsPage() {
                           </>
                         )}
                         {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
-                          <button
-                            onClick={() => handleCompleteAppointment(apt.id)}
-                            className="block text-green-600 hover:text-green-900 font-semibold"
-                          >
-                            Complete
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setVitalsAppointmentId(apt.id);
+                                setShowVitalsForm(true);
+                              }}
+                              className="block text-blue-600 hover:text-blue-900 font-semibold"
+                            >
+                              Enter Vitals
+                            </button>
+                            <button
+                              onClick={() => handleCompleteAppointment(apt.id)}
+                              className="block text-green-600 hover:text-green-900 font-semibold"
+                            >
+                              Complete
+                            </button>
+                          </>
                         )}
                         {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
                           ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
@@ -720,6 +781,162 @@ export default function AppointmentsPage() {
                   <button
                     type="button"
                     onClick={() => setShowPaymentForm(false)}
+                    className="flex-1 px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vitals Entry Modal */}
+      {showVitalsForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Enter Patient Vitals</h2>
+                <button
+                  onClick={() => setShowVitalsForm(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handleSaveVitals}>
+                {/* Blood Pressure */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Blood Pressure (Systolic)</label>
+                    <input
+                      type="number"
+                      value={vitalsData.blood_pressure_systolic}
+                      onChange={(e) => setVitalsData({ ...vitalsData, blood_pressure_systolic: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 120"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Blood Pressure (Diastolic)</label>
+                    <input
+                      type="number"
+                      value={vitalsData.blood_pressure_diastolic}
+                      onChange={(e) => setVitalsData({ ...vitalsData, blood_pressure_diastolic: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 80"
+                    />
+                  </div>
+                </div>
+
+                {/* Heart Rate & Oxygen */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Heart Rate (bpm)</label>
+                    <input
+                      type="number"
+                      value={vitalsData.heart_rate}
+                      onChange={(e) => setVitalsData({ ...vitalsData, heart_rate: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 72"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Oxygen Saturation (%)</label>
+                    <input
+                      type="number"
+                      value={vitalsData.oxygen_saturation}
+                      onChange={(e) => setVitalsData({ ...vitalsData, oxygen_saturation: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 98"
+                    />
+                  </div>
+                </div>
+
+                {/* Temperature */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Temperature</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={vitalsData.temperature}
+                      onChange={(e) => setVitalsData({ ...vitalsData, temperature: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="e.g., 98.6"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Unit</label>
+                    <select
+                      value={vitalsData.temperature_unit}
+                      onChange={(e) => setVitalsData({ ...vitalsData, temperature_unit: e.target.value as 'C' | 'F' })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="C">°C</option>
+                      <option value="F">°F</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Weight & Height */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Weight</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={vitalsData.weight}
+                        onChange={(e) => setVitalsData({ ...vitalsData, weight: e.target.value })}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                        placeholder="e.g., 70"
+                      />
+                      <select
+                        value={vitalsData.weight_unit}
+                        onChange={(e) => setVitalsData({ ...vitalsData, weight_unit: e.target.value as 'kg' | 'lbs' })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="kg">kg</option>
+                        <option value="lbs">lbs</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Height</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={vitalsData.height}
+                        onChange={(e) => setVitalsData({ ...vitalsData, height: e.target.value })}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                        placeholder="e.g., 175"
+                      />
+                      <select
+                        value={vitalsData.height_unit}
+                        onChange={(e) => setVitalsData({ ...vitalsData, height_unit: e.target.value as 'cm' | 'inches' })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg"
+                      >
+                        <option value="cm">cm</option>
+                        <option value="inches">in</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+                  >
+                    Save Vitals
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVitalsForm(false)}
                     className="flex-1 px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
                   >
                     Cancel

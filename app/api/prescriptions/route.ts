@@ -14,13 +14,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const patient_id = searchParams.get('patient_id');
+    const appointment_id = searchParams.get('appointment_id');
     const status = searchParams.get('status'); // active, dispensed, expired
 
-    console.log('Query Parameters:', { id, patient_id, status });
+    console.log('Query Parameters:', { id, patient_id, appointment_id, status });
 
     let query = supabase
       .from('prescriptions')
-      .select('*, patients(id, first_name, last_name, phone), users!prescriptions_user_id_fkey(id, first_name, last_name)');
+      .select(`*, 
+        patients(id, first_name, last_name, phone), 
+        users!prescriptions_user_id_fkey(id, first_name, last_name),
+        organizations(id, name, address, postal_code, phone),
+        branches(id, name, address, phone)
+      `);
 
     if (id) {
       query = query.eq('id', id);
@@ -28,6 +34,10 @@ export async function GET(request: NextRequest) {
 
     if (patient_id) {
       query = query.eq('patient_id', patient_id);
+    }
+
+    if (appointment_id) {
+      query = query.eq('appointment_id', appointment_id);
     }
 
     if (status) {

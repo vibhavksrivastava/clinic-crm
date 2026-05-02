@@ -132,6 +132,23 @@ export default function AppointmentsPage() {
   const [appointmentPrescriptions, setAppointmentPrescriptions] = useState<any[]>([]);
   const [showViewPrescriptions, setShowViewPrescriptions] = useState(false);
   const [viewPrescriptionsId, setViewPrescriptionsId] = useState<string | null>(null);
+
+  // Doctor vitals-specific states
+  const [showVitalsForm, setShowVitalsForm] = useState(false);
+  const [vitalsAppointmentId, setVitalsAppointmentId] = useState<string | null>(null);
+  const [vitalsData, setVitalsData] = useState({
+    blood_pressure_systolic: '',
+    blood_pressure_diastolic: '',
+    heart_rate: '',
+    temperature: '',
+    oxygen_saturation: '',
+    weight: '',
+    height: '',
+    temperature_unit: 'C' as 'C' | 'F',
+    weight_unit: 'kg' as 'kg' | 'lbs',
+    height_unit: 'cm' as 'cm' | 'inches',
+  });
+
   const [doctorReminders, setDoctorReminders] = useState<ReminderMessage[]>([]);
   const [doctorRemindersLoading, setDoctorRemindersLoading] = useState(false);
   const [dashboardUrl, setDashboardUrl] = useState<string>('/dashboard');
@@ -531,15 +548,389 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleViewPrescriptionsClick = (patientId: string) => {
-    //setViewPrescriptionsId(appointmentId);
-    setShowViewPrescriptions(true);
-    fetchPrescriptionsForAppointment(patientId);
+  const generatePrescriptionPDF = (prescriptionId: string, patientName: string) => {
+    const element = document.getElementById(`prescription-${prescriptionId}`);
+    if (!element) {
+      alert('❌ Prescription element not found');
+      return;
+    }
+
+    // Create a new window for printing
+    const printWindow = window.open('', '', 'width=900,height=1000');
+    if (!printWindow) {
+      alert('❌ Unable to open print window. Please check popup settings.');
+      return;
+    }
+
+    // Get the element's HTML
+    const elementHTML = element.innerHTML;
+
+    // Write HTML to the new window with comprehensive print styles
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Prescription_${patientName.replace(/\s+/g, '_')}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            html {
+              font-size: 16px;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+              padding: 20px;
+              background: white;
+              color: #111827;
+            }
+            
+            /* Typography */
+            h3 {
+              font-size: 1.875rem;
+              font-weight: bold;
+              color: white;
+            }
+            sub {
+              display: block;
+              font-size: 0.75rem;
+              color: inherit;
+            }
+            
+            /* Border and Layout */
+            .rounded-lg {
+              border-radius: 0.5rem;
+            }
+            .rounded {
+              border-radius: 0.25rem;
+            }
+            .border {
+              border: 1px solid #d1d5db;
+            }
+            .border-4 {
+              border: 4px solid #bfdbfe;
+            }
+            .border-b {
+              border-bottom: 1px solid #d1d5db;
+            }
+            .border-b-2 {
+              border-bottom: 2px solid #d1d5db;
+            }
+            .border-t {
+              border-top: 1px solid #d1d5db;
+            }
+            .border-t-2 {
+              border-top: 2px solid #111827;
+            }
+            .border-l-4 {
+              border-left: 4px solid #f59e0b;
+            }
+            .border-dashed {
+              border-style: dashed;
+            }
+            .border-blue-200 {
+              border-color: #bfdbfe;
+            }
+            .border-blue-300 {
+              border-color: #93c5fd;
+            }
+            .border-blue-400 {
+              border-color: #60a5fa;
+            }
+            .border-gray-300 {
+              border-color: #d1d5db;
+            }
+            .border-gray-800 {
+              border-color: #1f2937;
+            }
+            .border-red-200 {
+              border-color: #fecaca;
+            }
+            .border-orange-200 {
+              border-color: #fed7aa;
+            }
+            .border-yellow-400 {
+              border-color: #facc15;
+            }
+            
+            /* Backgrounds */
+            .bg-white {
+              background-color: white;
+            }
+            .bg-gradient-to-r {
+              background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
+            }
+            .bg-gray-100 {
+              background-color: #f3f4f6;
+            }
+            .bg-blue-50 {
+              background-color: #eff6ff;
+            }
+            .bg-blue-100 {
+              background-color: #dbeafe;
+            }
+            .bg-red-50 {
+              background-color: #fef2f2;
+            }
+            .bg-orange-50 {
+              background-color: #fff7ed;
+            }
+            .bg-green-100 {
+              background-color: #dcfce7;
+            }
+            .bg-yellow-50 {
+              background-color: #fffbeb;
+            }
+            
+            /* Text Colors */
+            .text-white {
+              color: white;
+            }
+            .text-gray-900 {
+              color: #111827;
+            }
+            .text-gray-700 {
+              color: #374151;
+            }
+            .text-gray-600 {
+              color: #4b5563;
+            }
+            .text-gray-500 {
+              color: #6b7280;
+            }
+            .text-blue-50 {
+              color: #eff6ff;
+            }
+            .text-blue-100 {
+              color: #dbeafe;
+            }
+            .text-blue-600 {
+              color: #2563eb;
+            }
+            .text-green-800 {
+              color: #166534;
+            }
+            
+            /* Font Sizing and Weight */
+            .text-xs {
+              font-size: 0.75rem;
+            }
+            .text-sm {
+              font-size: 0.875rem;
+            }
+            .text-base {
+              font-size: 1rem;
+            }
+            .text-lg {
+              font-size: 1.125rem;
+            }
+            .text-2xl {
+              font-size: 1.5rem;
+            }
+            .text-3xl {
+              font-size: 1.875rem;
+            }
+            .font-bold {
+              font-weight: bold;
+            }
+            .font-semibold {
+              font-weight: 600;
+            }
+            .font-semibold {
+              font-weight: 600;
+            }
+            
+            /* Spacing */
+            .p-2 {
+              padding: 0.5rem;
+            }
+            .p-3 {
+              padding: 0.75rem;
+            }
+            .px-2 {
+              padding-left: 0.5rem;
+              padding-right: 0.5rem;
+            }
+            .px-3 {
+              padding-left: 0.75rem;
+              padding-right: 0.75rem;
+            }
+            .px-4 {
+              padding-left: 1rem;
+              padding-right: 1rem;
+            }
+            .py-1 {
+              padding-top: 0.25rem;
+              padding-bottom: 0.25rem;
+            }
+            .py-2 {
+              padding-top: 0.5rem;
+              padding-bottom: 0.5rem;
+            }
+            .py-3 {
+              padding-top: 0.75rem;
+              padding-bottom: 0.75rem;
+            }
+            .mb-1 {
+              margin-bottom: 0.25rem;
+            }
+            .mb-2 {
+              margin-bottom: 0.5rem;
+            }
+            .mb-3 {
+              margin-bottom: 0.75rem;
+            }
+            .mb-4 {
+              margin-bottom: 1rem;
+            }
+            .mb-6 {
+              margin-bottom: 1.5rem;
+            }
+            .mt-1 {
+              margin-top: 0.25rem;
+            }
+            .pt-3 {
+              padding-top: 0.75rem;
+            }
+            .pt-4 {
+              padding-top: 1rem;
+            }
+            .pb-4 {
+              padding-bottom: 1rem;
+            }
+            .pr-6 {
+              padding-right: 1.5rem;
+            }
+            .p-6 {
+              padding: 1.5rem;
+            }
+            .p-8 {
+              padding: 2rem;
+            }
+            
+            /* Overflow */
+            .overflow-hidden {
+              overflow: hidden;
+            }
+            .overflow-y-auto {
+              overflow-y: auto;
+            }
+            
+            /* Display and Layout */
+            .grid {
+              display: grid;
+            }
+            .grid-cols-1 {
+              grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+            .grid-cols-2 {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .gap-2 {
+              gap: 0.5rem;
+            }
+            .gap-3 {
+              gap: 0.75rem;
+            }
+            .gap-4 {
+              gap: 1rem;
+            }
+            .gap-6 {
+              gap: 1.5rem;
+            }
+            .flex {
+              display: flex;
+            }
+            .flex-1 {
+              flex: 1 1 0%;
+            }
+            .flex-col {
+              flex-direction: column;
+            }
+            .items-start {
+              align-items: flex-start;
+            }
+            .items-center {
+              align-items: center;
+            }
+            .justify-between {
+              justify-content: space-between;
+            }
+            
+            /* Tables */
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 1.5rem;
+              border: 1px solid #d1d5db;
+            }
+            table tbody tr {
+              border-bottom: 1px solid #d1d5db;
+            }
+            table td {
+              padding: 0.75rem 1rem;
+              border: 1px solid #d1d5db;
+            }
+            
+            /* Inline elements */
+            .inline-block {
+              display: inline-block;
+            }
+            .mr-2 {
+              margin-right: 0.5rem;
+            }
+            
+            /* Text formatting */
+            .uppercase {
+              text-transform: uppercase;
+            }
+            .tracking-wide {
+              letter-spacing: 0.05em;
+            }
+            .italic {
+              font-style: italic;
+            }
+            
+            /* Hidden in print */
+            @media print {
+              body {
+                padding: 0;
+                margin: 0;
+              }
+              .flex.gap-3 {
+                display: none !important;
+              }
+              .rounded-lg.shadow-xl {
+                border: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${elementHTML}
+          <script>
+            setTimeout(() => {
+              window.print();
+            }, 250);
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
-  const fetchPrescriptionsForAppointment = async (patientId: string) => {
+  const handleViewPrescriptionsClick = (appointmentId: string) => {
+    setShowViewPrescriptions(true);
+    fetchPrescriptionsForAppointment(appointmentId);
+  };
+
+
+  const fetchPrescriptionsForAppointment = async (appointmentId: string) => {
     try {
-      const response = await fetch(`/api/prescriptions?patient_id=${patientId}`, {
+      const response = await fetch(`/api/prescriptions?appointment_id=${appointmentId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('authToken')}`,
         },
@@ -547,9 +938,57 @@ export default function AppointmentsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Show all prescriptions for this patient, regardless of appointment
-        const allPrescriptions = Array.isArray(data) ? data : [];
-        setAppointmentPrescriptions(allPrescriptions);
+        // Get all prescriptions for this appointment and merge vitals/medicines if in different rows
+        let allPrescriptions = Array.isArray(data) ? data : [];
+        
+        console.log('Raw prescriptions:', allPrescriptions);
+        
+        // Map nested patient, user, organization and branch data to flat fields
+        allPrescriptions = allPrescriptions.map((presc: any) => ({
+          ...presc,
+          patient_name: presc.patients 
+            ? `${presc.patients.first_name} ${presc.patients.last_name}`.trim()
+            : 'Patient Name',
+          patient_phone: presc.patients?.phone || 'Phone Not Available',
+          doctor_name: presc.users 
+            ? `Dr. ${presc.users.first_name} ${presc.users.last_name}`.trim()
+            : 'Dr. Name',
+          clinic_name: presc.organizations?.name || 'Clinic',
+          clinic_address: presc.organizations?.address || 'Address Not Available',
+          clinic_postal_code: presc.organizations?.postal_code || '',
+          clinic_phone: presc.organizations?.phone || '(555) 000-0000',
+          branch_name: presc.branches?.name || 'Main Branch',
+          branch_address: presc.branches?.address || 'Address Not Available',
+          branch_phone: presc.branches?.phone || 'N/A',
+        }));
+        
+        // Since all prescriptions should have the same appointment_id, we can merge them
+        if (allPrescriptions.length > 1) {
+          // Merge all prescriptions into one
+          const mergedPresc = {
+            ...allPrescriptions[0], // Start with first prescription
+            vitals: null,
+            medications: [],
+          };
+
+          // Collect all vitals and medications from all rows
+          allPrescriptions.forEach((presc: any) => {
+            if (presc.vitals && !mergedPresc.vitals) {
+              mergedPresc.vitals = presc.vitals;
+            }
+            if (presc.medications && Array.isArray(presc.medications)) {
+              presc.medications.forEach((med: any) => {
+                if (!mergedPresc.medications.some((m: any) => m.medication_name === med.medication_name)) {
+                  mergedPresc.medications.push(med);
+                }
+              });
+            }
+          });
+
+          setAppointmentPrescriptions([mergedPresc]);
+        } else {
+          setAppointmentPrescriptions(allPrescriptions);
+        }
       }
     } catch (error) {
       console.error('Error fetching prescriptions:', error);
@@ -558,10 +997,72 @@ export default function AppointmentsPage() {
 
   //const handleViewPrescriptions = (appointmentId: string, patientId: string) => {
   //  setViewPrescriptionsId(appointmentId);
-    const handleViewPrescriptions = (patientId: string) => {
-    //setViewPrescriptionsId(appointmentId);
-    setShowViewPrescriptions(true);
-    fetchPrescriptionsForAppointment(patientId);
+  //};
+
+  const handleSaveVitals = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!vitalsAppointmentId) {
+      alert('❌ Appointment ID not found');
+      console.error('vitalsAppointmentId is null/undefined');
+      return;
+    }
+
+    try {
+      const vitalsPayload = {
+        appointment_id: vitalsAppointmentId,
+        vitals: {
+          blood_pressure_systolic: vitalsData.blood_pressure_systolic ? parseInt(vitalsData.blood_pressure_systolic) : null,
+          blood_pressure_diastolic: vitalsData.blood_pressure_diastolic ? parseInt(vitalsData.blood_pressure_diastolic) : null,
+          heart_rate: vitalsData.heart_rate ? parseInt(vitalsData.heart_rate) : null,
+          temperature: vitalsData.temperature ? parseFloat(vitalsData.temperature) : null,
+          oxygen_saturation: vitalsData.oxygen_saturation ? parseInt(vitalsData.oxygen_saturation) : null,
+          weight: vitalsData.weight ? parseFloat(vitalsData.weight) : null,
+          height: vitalsData.height ? parseFloat(vitalsData.height) : null,
+          temperature_unit: vitalsData.temperature_unit,
+          weight_unit: vitalsData.weight_unit,
+          height_unit: vitalsData.height_unit,
+        },
+      };
+
+      console.log('Sending vitals payload:', vitalsPayload);
+
+      const response = await fetch('/api/appointments/vitals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vitalsPayload),
+      });
+
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
+      if (response.ok) {
+        setShowVitalsForm(false);
+        setVitalsAppointmentId(null);
+        setVitalsData({
+          blood_pressure_systolic: '',
+          blood_pressure_diastolic: '',
+          heart_rate: '',
+          temperature: '',
+          oxygen_saturation: '',
+          weight: '',
+          height: '',
+          temperature_unit: 'C',
+          weight_unit: 'kg',
+          height_unit: 'cm',
+        });
+        await fetchData();
+        alert('✅ Vitals saved successfully!');
+      } else {
+        const errorMsg = responseData.error || responseData.message || 'Failed to save vitals';
+        console.error('Error response:', errorMsg);
+        alert(`❌ ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error('Error saving vitals:', error);
+      alert(`❌ Error saving vitals: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const resetForm = () => {
@@ -852,13 +1353,22 @@ export default function AppointmentsPage() {
                           {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
                             <>
                               <button
+                                onClick={() => {
+                                  setVitalsAppointmentId(apt.id);
+                                  setShowVitalsForm(true);
+                                }}
+                                className="block text-blue-600 hover:text-blue-900 font-semibold"
+                              >
+                                📊 Enter Vitals
+                              </button>
+                              <button
                                 onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
                                 className="block text-blue-600 hover:text-blue-900 font-semibold"
                               >
                                 Rx Write Prescription
                               </button>
                               <button
-                                onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                                onClick={() => handleViewPrescriptionsClick(apt.id)}
                                 className="block text-purple-600 hover:text-purple-900 font-semibold"
                               >
                                 📋 View Prescriptions
@@ -902,7 +1412,7 @@ export default function AppointmentsPage() {
                           )}
                           {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
                             <button
-                              onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                              onClick={() => handleViewPrescriptionsClick(apt.id)}
                               className="block text-purple-600 hover:text-purple-900 font-semibold"
                             >
                               📋 View Prescriptions
@@ -988,13 +1498,22 @@ export default function AppointmentsPage() {
                       {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
                         <>
                           <button
+                            onClick={() => {
+                              setVitalsAppointmentId(apt.id);
+                              setShowVitalsForm(true);
+                            }}
+                            className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
+                          >
+                            Vitals
+                          </button>
+                          <button
                             onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
                             className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
                           >
                             Rx
                           </button>
                           <button
-                            onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                            onClick={() => handleViewPrescriptionsClick(apt.id)}
                             className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
                           >
                             View Rx
@@ -1038,7 +1557,7 @@ export default function AppointmentsPage() {
                       )}
                       {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
                         <button
-                          onClick={() => handleViewPrescriptionsClick(apt.patient_id)}
+                          onClick={() => handleViewPrescriptionsClick(apt.id)}
                           className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
                         >
                           View Rx
@@ -1364,60 +1883,370 @@ export default function AppointmentsPage() {
               {appointmentPrescriptions.length === 0 ? (
                 <p className="text-gray-500 text-lg">No prescriptions yet for this appointment.</p>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {appointmentPrescriptions.map((presc: any) => (
-                    <div key={presc.id} className="border-2 border-blue-200 rounded-lg p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-2xl font-bold text-gray-900">💊 Prescription</h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Issued: {new Date(presc.issued_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold capitalize">
-                          {presc.status || 'active'}
-                        </span>
-                      </div>
-
-                      {/* Medicines */}
-                      {presc.medications && Array.isArray(presc.medications) && presc.medications.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="font-bold text-gray-800 mb-3">Medicines:</h4>
-                          <div className="space-y-2">
-                            {presc.medications.map((med: any, idx: number) => (
-                              <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200">
-                                <p className="font-semibold text-gray-900">{med.medication_name}</p>
-                                <div className="grid grid-cols-3 gap-2 text-sm text-gray-700 mt-2">
-                                  <p><strong>Dosage:</strong> {med.dosage}</p>
-                                  <p><strong>Frequency:</strong> {med.frequency}</p>
-                                  <p><strong>Quantity:</strong> {med.quantity}</p>
-                                </div>
-                              </div>
-                            ))}
+                    <div key={presc.id} className="lg:col-span-2">
+                      <div className="bg-white rounded-lg shadow-lg border-4 border-blue-200 overflow-hidden" id={`prescription-${presc.id}`}>
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+                          <div className="text-center mb-4">
+                            <h3 className="text-2xl font-bold">💊 {presc.clinic_name || 'Clinic'}</h3>
+                            <sub>Registered Address: {presc.clinic_address || 'Not Available'}</sub>
+                            <sub> Postal Code: {presc.clinic_postal_code || ''}</sub>
+                            <sub> Phone: {presc.clinic_phone || '(+91) 000-0000'}</sub>
+                            <p className="text-sm text-blue-100">Professional Medical Prescription</p>
+                          </div>
+                          <div className="border-t border-blue-400 pt-3 text-xs text-blue-50 space-y-1">
+                            <div className="text-center mb-4">
+                              <sub>Branch: {presc.branch_name || 'Main Branch'}</sub>
+                              <sub> Address:{presc.branch_address || 'Not Available'}</sub>
+                              <sub> Phone: {presc.branch_phone || 'N/A'}</sub>
+                            </div>
                           </div>
                         </div>
-                      )}
 
-                      {/* Notes */}
-                      {presc.notes && (
-                        <div className="mt-4 pt-4 border-t border-blue-200">
-                          <p className="text-sm"><strong>Notes:</strong> {presc.notes}</p>
+                        {/* Content */}
+                        <div className="p-8">
+                          {/* Prescribed By */}
+                          <table className="w-full border border-gray-300 mb-6">
+                            <tbody>
+                              <tr className="border-b">
+                                <td className="px-4 py-3 bg-gray-100 text-sm font-semibold text-gray-600 uppercase w-1/3">
+                                  Prescribed By
+                                </td>
+                                <td className="px-4 py-3 text-base font-semibold text-gray-900">
+                                  {presc.doctor_name || 'Dr. Name'}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          {/* Patient Information and Vitals Side by Side */}
+                          <div className="mb-6 pb-4 border-b-2 border-gray-300 flex gap-0">
+                            {/* Patient Information - Left Side */}
+                            <div className="flex-1 pr-6">
+                              <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Patient Information</div>
+                              <div className="text-lg font-semibold text-gray-900">{presc.patient_name || 'Patient Name'}</div>
+                              <div className="text-sm text-gray-700 mt-1">📱 {presc.patient_phone || 'Phone Not Available'}</div>
+                              <div className="text-xs text-gray-600 mt-1">Rx ID: {presc.id?.substring(0, 8).toUpperCase()}</div>
+                            </div>
+
+                            {/* Vitals - Right Side Compact */}
+                            {presc.vitals && (Object.values(presc.vitals).some(v => v)) && (
+                              <div className="flex-1 border-l-2 border-gray-300 pl-6">
+                                <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Vitals</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {presc.vitals.blood_pressure_systolic && (
+                                    <div className="bg-blue-50 p-1.5 rounded border border-blue-200">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">BP:</span> <span className="font-bold text-gray-900">{presc.vitals.blood_pressure_systolic}/{presc.vitals.blood_pressure_diastolic}</span></div>
+                                    </div>
+                                  )}
+                                  {presc.vitals.heart_rate && (
+                                    <div className="bg-red-50 p-1.5 rounded border border-red-200">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">HR:</span> <span className="font-bold text-gray-900">{presc.vitals.heart_rate}</span></div>
+                                    </div>
+                                  )}
+                                  {presc.vitals.temperature && (
+                                    <div className="bg-orange-50 p-1.5 rounded border border-orange-200">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">T°:</span> <span className="font-bold text-gray-900">{presc.vitals.temperature}°</span></div>
+                                    </div>
+                                  )}
+                                  {presc.vitals.oxygen_saturation && (
+                                    <div className="bg-blue-50 p-1.5 rounded border border-blue-200">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">O₂:</span> <span className="font-bold text-gray-900">{presc.vitals.oxygen_saturation}%</span></div>
+                                    </div>
+                                  )}
+                                  {presc.vitals.weight && (
+                                    <div className="bg-gray-100 p-1.5 rounded border border-gray-300">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">Wt:</span> <span className="font-bold text-gray-900">{presc.vitals.weight}</span></div>
+                                    </div>
+                                  )}
+                                  {presc.vitals.height && (
+                                    <div className="bg-gray-100 p-1.5 rounded border border-gray-300">
+                                      <div className="text-xs"><span className="text-gray-600 font-semibold">Ht:</span> <span className="font-bold text-gray-900">{presc.vitals.height}</span></div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Medications Full Width */}
+                          <div className="mb-6">
+                            <div className="flex items-start gap-2 mb-3">
+                              <div className="text-3xl font-bold text-blue-600">℞</div>
+                              <div>
+                                <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold">Medications</div>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {presc.medications && Array.isArray(presc.medications) && presc.medications.length > 0 ? (
+                                presc.medications.map((med: any, idx: number) => (
+                                  <div key={idx} className="bg-blue-50 p-2 rounded border border-blue-200 text-sm">
+                                    <div className="font-bold text-gray-900">{med.medication_name}</div>
+                                    <div className="text-xs text-gray-700 mt-1">
+                                      <span className="bg-blue-100 px-2 py-0.5 rounded border border-blue-300 inline-block mr-2">{med.dosage}</span>
+                                      <span className="text-gray-600">Freq: {med.frequency}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-1">Qty: {med.quantity}</div>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-gray-500 italic text-sm">No medications prescribed</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="my-6 border-t-2 border-dashed border-gray-400"></div>
+
+                          {/* Issued Date */}
+                          <div className="mb-6">
+                            <div className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">Issued Date</div>
+                            <div className="text-sm font-semibold text-gray-900">{new Date(presc.issued_date).toLocaleDateString()}</div>
+                          </div>
+
+                          {/* Doctor Signature Line */}
+                          <div className="mb-6 pt-4">
+                            <div className="border-t-2 border-gray-800 w-40 mb-2"></div>
+                            <div className="text-xs text-gray-600 font-semibold">Doctor's Signature</div>
+                          </div>
+
+                          {/* Notes */}
+                          {presc.notes && (
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded text-xs text-gray-700">
+                              <strong>📝 Notes:</strong> {presc.notes}
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3 pt-4">
+                            <button 
+                              onClick={() => generatePrescriptionPDF(presc.id, presc.patient_name)}
+                              className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
+                            >
+                              🖨️ Print
+                            </button>
+                            <button 
+                              onClick={() => setShowViewPrescriptions(false)}
+                              className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition text-sm"
+                            >
+                              🗑️ Close
+                            </button>
+                          </div>
                         </div>
-                      )}
+
+                        {/* Footer */}
+                        <div className="bg-gray-100 px-8 py-3 text-center text-xs text-gray-600 border-t border-gray-300">
+                          <div>This is a digitally issued prescription. Valid for 12 months from issue date.</div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="mt-6">
+      {/* Vitals Form Modal */}
+      {showVitalsForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-gray-900">📊 Enter Vital Signs</h2>
                 <button
-                  type="button"
-                  onClick={() => setShowViewPrescriptions(false)}
-                  className="w-full px-4 py-3 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition"
+                  onClick={() => setShowVitalsForm(false)}
+                  className="text-gray-500 hover:text-gray-700 text-3xl"
                 >
-                  Close
+                  ×
                 </button>
               </div>
+
+              <form onSubmit={handleSaveVitals}>
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Blood Pressure */}
+                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <label className="block text-sm font-semibold text-blue-900 mb-3">
+                      🫀 Blood Pressure (mmHg)
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        placeholder="Systolic"
+                        value={vitalsData.blood_pressure_systolic}
+                        onChange={(e) =>
+                          setVitalsData({
+                            ...vitalsData,
+                            blood_pressure_systolic: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-gray-600 font-bold">/</span>
+                      <input
+                        type="number"
+                        placeholder="Diastolic"
+                        value={vitalsData.blood_pressure_diastolic}
+                        onChange={(e) =>
+                          setVitalsData({
+                            ...vitalsData,
+                            blood_pressure_diastolic: e.target.value,
+                          })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Heart Rate */}
+                  <div className="bg-red-50 p-4 rounded-lg border-2 border-red-200">
+                    <label className="block text-sm font-semibold text-red-900 mb-3">
+                      ❤️ Heart Rate (bpm)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="60-100 bpm"
+                      value={vitalsData.heart_rate}
+                      onChange={(e) =>
+                        setVitalsData({ ...vitalsData, heart_rate: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+
+                  {/* Temperature */}
+                  <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
+                    <label className="block text-sm font-semibold text-orange-900 mb-3">
+                      🌡️ Temperature
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="36.5"
+                        step="0.1"
+                        value={vitalsData.temperature}
+                        onChange={(e) =>
+                          setVitalsData({ ...vitalsData, temperature: e.target.value })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <select
+                        value={vitalsData.temperature_unit}
+                        onChange={(e) =>
+                          setVitalsData({
+                            ...vitalsData,
+                            temperature_unit: e.target.value as 'C' | 'F',
+                          })
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value="C">°C</option>
+                        <option value="F">°F</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Oxygen Saturation */}
+                  <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                    <label className="block text-sm font-semibold text-green-900 mb-3">
+                      💨 O₂ Saturation (%)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="95-100%"
+                      value={vitalsData.oxygen_saturation}
+                      onChange={(e) =>
+                        setVitalsData({
+                          ...vitalsData,
+                          oxygen_saturation: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  {/* Weight */}
+                  <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                    <label className="block text-sm font-semibold text-purple-900 mb-3">
+                      ⚖️ Weight
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="70.5"
+                        step="0.1"
+                        value={vitalsData.weight}
+                        onChange={(e) =>
+                          setVitalsData({ ...vitalsData, weight: e.target.value })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <select
+                        value={vitalsData.weight_unit}
+                        onChange={(e) =>
+                          setVitalsData({
+                            ...vitalsData,
+                            weight_unit: e.target.value as 'kg' | 'lbs',
+                          })
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="kg">kg</option>
+                        <option value="lbs">lbs</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Height */}
+                  <div className="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
+                    <label className="block text-sm font-semibold text-indigo-900 mb-3">
+                      📏 Height
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="175"
+                        step="0.1"
+                        value={vitalsData.height}
+                        onChange={(e) =>
+                          setVitalsData({ ...vitalsData, height: e.target.value })
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <select
+                        value={vitalsData.height_unit}
+                        onChange={(e) =>
+                          setVitalsData({
+                            ...vitalsData,
+                            height_unit: e.target.value as 'cm' | 'inches',
+                          })
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="cm">cm</option>
+                        <option value="inches">inches</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mt-8">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+                  >
+                    ✓ Save Vitals
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVitalsForm(false)}
+                    className="flex-1 px-4 py-3 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
