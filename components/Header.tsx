@@ -42,6 +42,7 @@ export default function Header() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/patients', label: 'Patients' },
     { href: '/appointments', label: 'Appointments' },
+    { href: '/walk-ins', label: 'Walk-ins' },
     { href: '/prescriptions', label: 'Prescriptions' },
     { href: '/invoicing', label: 'Invoicing' },
   ];

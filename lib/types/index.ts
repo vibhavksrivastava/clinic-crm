@@ -367,3 +367,78 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+// =====================================================
+// WALK-IN TYPES
+// =====================================================
+export type WalkInStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
+
+export interface AdditionalTest {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface WalkIn {
+  id: string;
+  patientId?: string; // Optional if not in system
+  name: string;
+  phoneNumber: string;
+  address: string;
+  status: WalkInStatus;
+  checkInTime: Date;
+  checkOutTime?: Date;
+  additionalTests?: AdditionalTest[]; // Tests recommended/added
+  notes?: string;
+  createdBy: string; // staff id who created
+  updatedBy?: string; // staff id who completed
+  doctorId?: string; // assigned doctor
+  organizationId: string;
+  branchId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Extended fields for display
+  createdByStaff?: UserWithRole;
+  updatedByStaff?: UserWithRole;
+  doctor?: UserWithRole; // doctor details
+}
+
+export interface CreateWalkInRequest {
+  name: string;
+  phoneNumber: string;
+  address: string;
+  patientId?: string;
+  doctorId?: string;
+  notes?: string;
+}
+
+export interface UpdateWalkInRequest {
+  status?: WalkInStatus;
+  additionalTests?: AdditionalTest[];
+  notes?: string;
+}
+
+export interface CompleteWalkInRequest {
+  additionalTests?: AdditionalTest[];
+  notes?: string;
+}
+
+export interface WalkInReport {
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  date: Date;
+  totalWalkIns: number;
+  completedWalkIns: number;
+  averageTimeMinutes: number;
+  maxTimeMinutes: number;
+  minTimeMinutes: number;
+  commonTests: { testName: string; count: number }[];
+}
+
+export interface WalkInStats {
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  thisYear: number;
+  averageTimeToComplete: number;
+  completionRate: number;
+}

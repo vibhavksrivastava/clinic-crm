@@ -21,6 +21,7 @@ interface User {
 interface DashboardStats {
   totalPatients: number;
   todaysAppointments: number;
+  todaysWalkIns?: number;
 }
 
 export default function DashboardPage() {
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     todaysAppointments: 0,
+    todaysWalkIns: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -148,8 +150,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                <div className="text-orange-600 text-2xl sm:text-3xl font-bold">0</div>
-                <p className="text-gray-600 text-xs sm:text-sm mt-2">Pending Invoices</p>
+                <div className="text-orange-600 text-2xl sm:text-3xl font-bold">{stats.todaysWalkIns || 0}</div>
+                <p className="text-gray-600 text-xs sm:text-sm mt-2">Walk-ins Today</p>
               </>
             )}
           </div>
@@ -175,6 +177,16 @@ export default function DashboardPage() {
             <div className="text-2xl sm:text-3xl mb-3">📅</div>
             <h2 className="text-lg sm:text-xl font-bold text-gray-900">Appointments</h2>
             <p className="text-gray-600 mt-2 text-sm sm:text-base">Schedule and manage appointments</p>
+          </Link>
+
+          {/* Walk-ins */}
+          <Link
+            href="/walk-ins"
+            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+          >
+            <div className="text-2xl sm:text-3xl mb-3">🚶</div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Walk-ins</h2>
+            <p className="text-gray-600 mt-2 text-sm sm:text-base">Track daily walk-in patients</p>
           </Link>
 
           {/* Prescriptions */}

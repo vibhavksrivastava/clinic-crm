@@ -138,8 +138,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Transform user data from snake_case (database) to camelCase (frontend)
+    const transformedUser = {
+      id: userWithRole.id,
+      email: userWithRole.email,
+      firstName: userWithRole.first_name,
+      lastName: userWithRole.last_name,
+      phone: userWithRole.phone,
+      profilePictureUrl: userWithRole.profile_picture_url,
+      specialization: userWithRole.specialization,
+      licenseNumber: userWithRole.license_number,
+      roleId: userWithRole.role_id,
+      organizationId: userWithRole.organization_id,
+      branchId: userWithRole.branch_id,
+      userStatus: userWithRole.user_status,
+      lastLogin: userWithRole.last_login,
+      loginAttempts: userWithRole.login_attempts,
+      lockedUntil: userWithRole.locked_until,
+      createdAt: userWithRole.created_at,
+      updatedAt: userWithRole.updated_at,
+      role: userWithRole.role,
+    };
+
     // Create login response
-    const response = await createLoginResponse(userWithRole, organization, branch);
+    const response = await createLoginResponse(transformedUser, organization, branch);
 
     // Clear login attempts on success
     clearLoginAttempts(email);
@@ -306,7 +328,23 @@ export async function PUT(request: NextRequest) {
 
     // Create login response
     const userWithRole = { 
-      ...user, 
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      phone: user.phone,
+      profilePictureUrl: user.profile_picture_url,
+      specialization: user.specialization,
+      licenseNumber: user.license_number,
+      roleId: user.role_id,
+      organizationId: user.organization_id,
+      branchId: user.branch_id,
+      userStatus: user.user_status,
+      lastLogin: user.last_login,
+      loginAttempts: user.login_attempts,
+      lockedUntil: user.locked_until,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
       role: {
         id: superAdminRole.id,
         roleType: superAdminRole.role_type,
