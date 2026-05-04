@@ -116,7 +116,7 @@ export default function WalkInCard({
       {walkIn.doctor && (
         <div className="mb-3 text-sm text-gray-700">
           <p>
-            <span className="font-medium">👨‍⚕️</span> Assigned to: Dr. {walkIn.doctor.first_name} {walkIn.doctor.last_name}
+            <span className="font-medium">👨‍⚕️</span> Assigned to: Dr. {walkIn.doctor.firstName} {walkIn.doctor.lastName}
             {walkIn.doctor.specialization && ` - ${walkIn.doctor.specialization}`}
           </p>
         </div>
