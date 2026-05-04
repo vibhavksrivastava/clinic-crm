@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const reportType = searchParams.get('type') || 'stats'; // stats, daily, weekly, monthly, yearly
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
 
     if (reportType === 'stats') {
       return getWalkInStats(userContext);
