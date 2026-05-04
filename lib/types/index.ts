@@ -436,6 +436,7 @@ export interface WalkInReport {
 
 export interface WalkInStats {
   today: number;
+  todayCompleted: number;
   thisWeek: number;
   thisMonth: number;
   thisYear: number;
