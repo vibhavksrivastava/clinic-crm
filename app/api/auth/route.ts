@@ -348,8 +348,11 @@ export async function PUT(request: NextRequest) {
       role: {
         id: superAdminRole.id,
         roleType: superAdminRole.role_type,
-        permissions: superAdminRole.permissions,
         name: superAdminRole.name,
+        permissions: superAdminRole.permissions || [],
+        isSystemRole: superAdminRole.is_system_role || false,
+        createdAt: superAdminRole.created_at,
+        updatedAt: superAdminRole.updated_at,
       }
     };
     const loginResponse = await createLoginResponse(userWithRole, organization, undefined);
