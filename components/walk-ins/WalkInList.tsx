@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { WalkIn, AdditionalTest, WalkInStatus } from '@/lib/types';
+import { WalkIn, AdditionalTest, WalkInStatus, Vital, Medicine } from '@/lib/types';
 import WalkInCard from './WalkInCard';
 
 interface WalkInListProps {
@@ -58,6 +58,8 @@ export default function WalkInList({ refreshTrigger = 0 }: WalkInListProps) {
         checkInTime: new Date(w.check_in_time),
         checkOutTime: w.check_out_time ? new Date(w.check_out_time) : null,
         additionalTests: w.additional_tests || [],
+        vitals: w.vitals || [],
+        medicines: w.medicines || [],
         notes: w.notes,
         createdBy: w.created_by,
         updatedBy: w.updated_by,
@@ -119,6 +121,52 @@ export default function WalkInList({ refreshTrigger = 0 }: WalkInListProps) {
       );
     } catch (err) {
       console.error('Error updating tests:', err);
+    }
+  };
+
+  const handleVitalsChange = async (id: string, vitals: Vital[]) => {
+    try {
+      const response = await fetch('/api/walk-ins', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, vitals }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vitals');
+      }
+
+      // Update local state
+      setWalkIns((prev) =>
+        prev.map((w) =>
+          w.id === id ? { ...w, vitals } : w
+        )
+      );
+    } catch (err) {
+      console.error('Error updating vitals:', err);
+    }
+  };
+
+  const handleMedicinesChange = async (id: string, medicines: Medicine[]) => {
+    try {
+      const response = await fetch('/api/walk-ins', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, medicines }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update medicines');
+      }
+
+      // Update local state
+      setWalkIns((prev) =>
+        prev.map((w) =>
+          w.id === id ? { ...w, medicines } : w
+        )
+      );
+    } catch (err) {
+      console.error('Error updating medicines:', err);
     }
   };
 
@@ -203,6 +251,8 @@ export default function WalkInList({ refreshTrigger = 0 }: WalkInListProps) {
               walkIn={walkIn}
               onStatusChange={handleStatusChange}
               onTestsChange={handleTestsChange}
+              onVitalsChange={handleVitalsChange}
+              onMedicinesChange={handleMedicinesChange}
             />
           ))}
         </div>

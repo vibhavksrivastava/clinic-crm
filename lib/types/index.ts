@@ -379,6 +379,21 @@ export interface AdditionalTest {
   description?: string;
 }
 
+export interface Vital {
+  id: string;
+  name: string;
+  value: string;
+  unit?: string;
+}
+
+export interface Medicine {
+  id: string;
+  name: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+}
+
 export interface WalkIn {
   id: string;
   patientId?: string; // Optional if not in system
@@ -389,6 +404,8 @@ export interface WalkIn {
   checkInTime: Date;
   checkOutTime?: Date;
   additionalTests?: AdditionalTest[]; // Tests recommended/added
+  vitals?: Vital[]; // Vitals recorded
+  medicines?: Medicine[]; // Medicines prescribed/given
   notes?: string;
   createdBy: string; // staff id who created
   updatedBy?: string; // staff id who completed
@@ -415,11 +432,15 @@ export interface CreateWalkInRequest {
 export interface UpdateWalkInRequest {
   status?: WalkInStatus;
   additionalTests?: AdditionalTest[];
+  vitals?: Vital[];
+  medicines?: Medicine[];
   notes?: string;
 }
 
 export interface CompleteWalkInRequest {
   additionalTests?: AdditionalTest[];
+  vitals?: Vital[];
+  medicines?: Medicine[];
   notes?: string;
 }
 

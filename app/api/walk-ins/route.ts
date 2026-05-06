@@ -123,6 +123,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If patientId is not provided, create a new patient
+    let finalPatientId = patientId;
+    if (!patientId) {
+      // Extract first and last name from full name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .insert([
+          {
+            first_name: firstName,
+            last_name: lastName,
+            phone: phoneNumber,
+            address: address,
+            organization_id: userContext.organizationId,
+            branch_id: userContext.branchId || null,
+          },
+        ])
+        .select('id');
+
+      if (patientError) {
+        console.error('❌ Error creating patient:', patientError);
+        // Continue without patient - patient creation is not critical for walk-in creation
+      } else if (patientData && Array.isArray(patientData) && patientData.length > 0) {
+        finalPatientId = patientData[0].id;
+        console.log(`✓ Patient created: ${finalPatientId}`);
+      }
+    }
+
     // Create walk-in record
     const { data, error } = await supabase
       .from('walk_ins')
@@ -131,7 +162,7 @@ export async function POST(request: NextRequest) {
           name,
           phone_number: phoneNumber,
           address,
-          patient_id: patientId || null,
+          patient_id: finalPatientId || null,
           doctor_id: doctorId || null,
           notes: notes || null,
           status: 'pending',
@@ -140,6 +171,8 @@ export async function POST(request: NextRequest) {
           organization_id: userContext.organizationId,
           branch_id: userContext.branchId || null,
           additional_tests: [],
+          vitals: [],
+          medicines: [],
         },
       ])
       .select(
@@ -176,7 +209,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, status, additionalTests, notes } = body;
+    const { id, status, additionalTests, vitals, medicines, notes } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -196,6 +229,22 @@ export async function PATCH(request: NextRequest) {
       if (status === 'completed') {
         updateData.check_out_time = new Date().toISOString();
       }
+    }
+
+    if (additionalTests !== undefined) {
+      updateData.additional_tests = additionalTests;
+    }
+
+    if (vitals !== undefined) {
+      updateData.vitals = vitals;
+    }
+
+    if (medicines !== undefined) {
+      updateData.medicines = medicines;
+    }
+
+    if (notes !== undefined) {
+      updateData.notes = notes;
     }
 
     if (additionalTests !== undefined) {

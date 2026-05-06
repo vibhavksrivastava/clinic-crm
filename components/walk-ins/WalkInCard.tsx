@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { WalkIn, AdditionalTest } from '@/lib/types';
+import { WalkIn, AdditionalTest, Vital, Medicine } from '@/lib/types';
 
 interface WalkInCardProps {
   walkIn: WalkIn;
   onUpdate?: (walkIn: WalkIn) => void;
   onStatusChange?: (id: string, status: 'in-progress' | 'completed') => void;
   onTestsChange?: (id: string, tests: AdditionalTest[]) => void;
+  onVitalsChange?: (id: string, vitals: Vital[]) => void;
+  onMedicinesChange?: (id: string, medicines: Medicine[]) => void;
 }
 
 export default function WalkInCard({
@@ -15,9 +17,19 @@ export default function WalkInCard({
   onUpdate,
   onStatusChange,
   onTestsChange,
+  onVitalsChange,
+  onMedicinesChange,
 }: WalkInCardProps) {
   const [showTests, setShowTests] = useState(false);
+  const [showVitals, setShowVitals] = useState(false);
+  const [showMedicines, setShowMedicines] = useState(false);
   const [newTest, setNewTest] = useState('');
+  const [newVitalName, setNewVitalName] = useState('');
+  const [newVitalValue, setNewVitalValue] = useState('');
+  const [newVitalUnit, setNewVitalUnit] = useState('');
+  const [newMedicineName, setNewMedicineName] = useState('');
+  const [newMedicineDosage, setNewMedicineDosage] = useState('');
+  const [newMedicineFrequency, setNewMedicineFrequency] = useState('');
   const [updating, setUpdating] = useState(false);
 
   const getStatusColor = (status: string) => {
@@ -87,6 +99,54 @@ export default function WalkInCard({
   const handleRemoveTest = (testId: string) => {
     const updatedTests = (walkIn.additionalTests || []).filter((t) => t.id !== testId);
     onTestsChange?.(walkIn.id, updatedTests);
+  };
+
+  const handleAddVital = async () => {
+    if (!newVitalName.trim() || !newVitalValue.trim()) return;
+
+    const updatedVitals = [
+      ...(walkIn.vitals || []),
+      {
+        id: Date.now().toString(),
+        name: newVitalName.trim(),
+        value: newVitalValue.trim(),
+        unit: newVitalUnit.trim() || undefined,
+      },
+    ];
+
+    setNewVitalName('');
+    setNewVitalValue('');
+    setNewVitalUnit('');
+    onVitalsChange?.(walkIn.id, updatedVitals);
+  };
+
+  const handleRemoveVital = (vitalId: string) => {
+    const updatedVitals = (walkIn.vitals || []).filter((v) => v.id !== vitalId);
+    onVitalsChange?.(walkIn.id, updatedVitals);
+  };
+
+  const handleAddMedicine = async () => {
+    if (!newMedicineName.trim()) return;
+
+    const updatedMedicines = [
+      ...(walkIn.medicines || []),
+      {
+        id: Date.now().toString(),
+        name: newMedicineName.trim(),
+        dosage: newMedicineDosage.trim() || undefined,
+        frequency: newMedicineFrequency.trim() || undefined,
+      },
+    ];
+
+    setNewMedicineName('');
+    setNewMedicineDosage('');
+    setNewMedicineFrequency('');
+    onMedicinesChange?.(walkIn.id, updatedMedicines);
+  };
+
+  const handleRemoveMedicine = (medicineId: string) => {
+    const updatedMedicines = (walkIn.medicines || []).filter((m) => m.id !== medicineId);
+    onMedicinesChange?.(walkIn.id, updatedMedicines);
   };
 
   const duration = calculateDuration();
@@ -194,6 +254,148 @@ export default function WalkInCard({
                 >
                   Add
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Vitals Section */}
+      <div className="mb-3">
+        <button
+          onClick={() => setShowVitals(!showVitals)}
+          className="flex items-center gap-2 text-sm font-medium text-green-600 hover:text-green-700"
+        >
+          <span>🩺 Vitals</span>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+            {(walkIn.vitals || []).length}
+          </span>
+        </button>
+
+        {showVitals && (
+          <div className="mt-2 space-y-2">
+            {/* Vitals List */}
+            {(walkIn.vitals || []).length > 0 && (
+              <div className="space-y-1">
+                {walkIn.vitals!.map((vital) => (
+                  <div key={vital.id} className="flex items-center justify-between bg-white bg-opacity-70 p-2 rounded text-sm">
+                    <span>✓ {vital.name}: {vital.value}{vital.unit ? ` ${vital.unit}` : ''}</span>
+                    <button
+                      onClick={() => handleRemoveVital(vital.id)}
+                      className="text-red-600 hover:text-red-700 font-medium"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Vital Form */}
+            {walkIn.status !== 'completed' && (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  value={newVitalName}
+                  onChange={(e) => setNewVitalName(e.target.value)}
+                  placeholder="Vital name (e.g., BP, Temperature)"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newVitalValue}
+                    onChange={(e) => setNewVitalValue(e.target.value)}
+                    placeholder="Value"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <input
+                    type="text"
+                    value={newVitalUnit}
+                    onChange={(e) => setNewVitalUnit(e.target.value)}
+                    placeholder="Unit (e.g., mmHg, °C)"
+                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <button
+                    onClick={handleAddVital}
+                    className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Medicines Section */}
+      <div className="mb-3">
+        <button
+          onClick={() => setShowMedicines(!showMedicines)}
+          className="flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700"
+        >
+          <span>💊 Medicines</span>
+          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+            {(walkIn.medicines || []).length}
+          </span>
+        </button>
+
+        {showMedicines && (
+          <div className="mt-2 space-y-2">
+            {/* Medicines List */}
+            {(walkIn.medicines || []).length > 0 && (
+              <div className="space-y-1">
+                {walkIn.medicines!.map((medicine) => (
+                  <div key={medicine.id} className="flex items-center justify-between bg-white bg-opacity-70 p-2 rounded text-sm">
+                    <span>
+                      ✓ {medicine.name}
+                      {medicine.dosage && ` - ${medicine.dosage}`}
+                      {medicine.frequency && ` (${medicine.frequency})`}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveMedicine(medicine.id)}
+                      className="text-red-600 hover:text-red-700 font-medium"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Medicine Form */}
+            {walkIn.status !== 'completed' && (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  value={newMedicineName}
+                  onChange={(e) => setNewMedicineName(e.target.value)}
+                  placeholder="Medicine name"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <input
+                  type="text"
+                  value={newMedicineDosage}
+                  onChange={(e) => setNewMedicineDosage(e.target.value)}
+                  placeholder="Dosage (e.g., 500mg)"
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMedicineFrequency}
+                    onChange={(e) => setNewMedicineFrequency(e.target.value)}
+                    placeholder="Frequency (e.g., 3x daily)"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={handleAddMedicine}
+                    className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             )}
           </div>
