@@ -15,9 +15,10 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
     const patient_id = searchParams.get('patient_id');
     const appointment_id = searchParams.get('appointment_id');
+    const walk_in_id = searchParams.get('walk_in_id');
     const status = searchParams.get('status'); // active, dispensed, expired
 
-    console.log('Query Parameters:', { id, patient_id, appointment_id, status });
+    console.log('Query Parameters:', { id, patient_id, appointment_id, walk_in_id, status });
 
     let query = supabase
       .from('prescriptions')
@@ -38,6 +39,10 @@ export async function GET(request: NextRequest) {
 
     if (appointment_id) {
       query = query.eq('appointment_id', appointment_id);
+    }
+
+    if (walk_in_id) {
+      query = query.eq('walk_in_id', walk_in_id);
     }
 
     if (status) {
@@ -81,11 +86,11 @@ export async function GET(request: NextRequest) {
       } else {
         // If patient_id is specified, allow viewing all prescriptions for that patient
         // Otherwise, only return prescriptions written by this doctor
-        if (!patient_id) {
+        if (!patient_id && !walk_in_id) {
           const filteredData = prescriptions.filter((p: any) => p.user_id === userId);
           return NextResponse.json(filteredData);
         }
-        // If patient_id is provided, return all prescriptions for that patient
+        // If patient_id or walk_in_id is provided, return all prescriptions for that patient/walk-in
         return NextResponse.json(prescriptions);
       }
     }
@@ -117,6 +122,7 @@ export async function POST(request: NextRequest) {
       medications, 
       issued_date, 
       appointment_id,
+      walk_in_id,
       notes 
     } = await request.json();
 
@@ -124,6 +130,7 @@ export async function POST(request: NextRequest) {
       patient_id,
       user_id: userContext.userId,
       appointment_id,
+      walk_in_id,
       medications: medications?.length,
       org_id: userContext.organizationId,
       branch_id: userContext.branchId,
@@ -152,12 +159,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Verify doctor ownership of walk-in if provided
+    if (walk_in_id) {
+      const { data: walkIn } = await supabase
+        .from('walk_ins')
+        .select('doctor_id, created_by')
+        .eq('id', walk_in_id)
+        .single();
+
+      // Allow prescription creation if user is the doctor assigned to walk-in or the user who created it
+      if (walkIn && walkIn.doctor_id !== userContext.userId && walkIn.created_by !== userContext.userId) {
+        return NextResponse.json(
+          { error: 'Cannot create prescription for other doctor\'s walk-in' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Insert prescription with user_id
     const insertData: any = {
       patient_id,
       user_id: userContext.userId,
       medications,
       appointment_id: appointment_id || null,
+      walk_in_id: walk_in_id || null,
       issued_date: issued_date || new Date().toISOString().split('T')[0],
       status: 'active',
       notes,

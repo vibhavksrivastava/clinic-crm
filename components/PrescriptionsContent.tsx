@@ -38,12 +38,20 @@ interface FormVitals {
   height_unit: 'cm' | 'inches';
 }
 
+interface TestItem {
+  id?: string;
+  name: string;
+}
+
 interface Prescription {
   id: string;
   patient_id: string;
   user_id?: string;
+  appointment_id?: string;
+  walk_in_id?: string;
   medications: Medicine[];
   vitals?: Vitals;
+  additional_tests?: TestItem[];
   issued_date: string;
   status: string;
   notes?: string;
@@ -127,8 +135,15 @@ export function PrescriptionsContent() {
   // Check for view parameter in URL
   useEffect(() => {
     const view = searchParams.get('view');
+    const walkInId = searchParams.get('walk_in') || searchParams.get('walk_in_id');
     if (view) {
       setViewId(view);
+      fetchData(undefined, false);
+    } else if (walkInId) {
+      setViewId(null);
+      fetchData(walkInId, true);
+    } else {
+      fetchData();
     }
   }, [searchParams]);
 
@@ -143,7 +158,6 @@ export function PrescriptionsContent() {
   }, [viewId, prescriptions]);
 
   useEffect(() => {
-    fetchData();
     // Set current date as default
     setFormData(prev => ({
       ...prev,
@@ -151,11 +165,15 @@ export function PrescriptionsContent() {
     }));
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (walkInId?: string, autoSelectFirst = false) => {
     try {
       setLoading(true);
+      let prescriptionsUrl = '/api/prescriptions';
+      if (walkInId) {
+        prescriptionsUrl += `?walk_in_id=${walkInId}`;
+      }
       const [prescriptionsRes, patientsRes] = await Promise.all([
-        fetch('/api/prescriptions'),
+        fetch(prescriptionsUrl),
         fetch('/api/patients'),
       ]);
 
@@ -164,6 +182,12 @@ export function PrescriptionsContent() {
 
       setPrescriptions(Array.isArray(prescriptionsData) ? prescriptionsData : []);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
+      
+      // Auto-select first prescription if filtering by walk_in
+      if (walkInId && Array.isArray(prescriptionsData) && prescriptionsData.length > 0 && autoSelectFirst) {
+        setViewId(prescriptionsData[0].id);
+        setSelectedPrescription(prescriptionsData[0]);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -684,6 +708,15 @@ export function PrescriptionsContent() {
                             <p className="text-xs text-gray-600 mt-1">
                               👨‍⚕️ Dr. {rx.users?.first_name} {rx.users?.last_name}
                             </p>
+                            {rx.walk_in_id && (
+                              <p className="text-xs text-purple-600 font-semibold mt-1">🚶 Walk-in Prescription</p>
+                            )}
+                            {rx.appointment_id && !rx.walk_in_id && (
+                              <p className="text-xs text-green-600 font-semibold mt-1">📅 Appointment Prescription</p>
+                            )}
+                            {rx.additional_tests && rx.additional_tests.length > 0 && (
+                              <p className="text-xs text-blue-600 mt-1">🧪 {rx.additional_tests.length} test{rx.additional_tests.length !== 1 ? 's' : ''}</p>
+                            )}
                             <p className="text-xs text-gray-500 mt-2">
                               📅 {new Date(rx.issued_date).toLocaleDateString()}
                             </p>
@@ -806,6 +839,36 @@ export function PrescriptionsContent() {
                       Dr. {selectedPrescription.users?.first_name} {selectedPrescription.users?.last_name}
                     </div>
                   </div>
+
+                  {/* Walk-in Information */}
+                  {selectedPrescription.walk_in_id && (
+                    <div className="mb-6 pb-4 border-b-2 border-purple-300 bg-purple-50 p-3 rounded">
+                      <div className="text-sm text-purple-600 uppercase tracking-wide font-semibold mb-2">🚶 Linked to Walk-in</div>
+                      <div className="text-sm text-gray-700">Walk-in ID: {selectedPrescription.walk_in_id.slice(0, 8).toUpperCase()}</div>
+                    </div>
+                  )}
+
+                  {/* Appointment Information */}
+                  {selectedPrescription.appointment_id && !selectedPrescription.walk_in_id && (
+                    <div className="mb-6 pb-4 border-b-2 border-green-300 bg-green-50 p-3 rounded">
+                      <div className="text-sm text-green-600 uppercase tracking-wide font-semibold mb-2">📅 Linked to Appointment</div>
+                      <div className="text-sm text-gray-700">Appointment ID: {selectedPrescription.appointment_id.slice(0, 8).toUpperCase()}</div>
+                    </div>
+                  )}
+
+                  {/* Tests Information */}
+                  {selectedPrescription.additional_tests && selectedPrescription.additional_tests.length > 0 && (
+                    <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                      <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-3">🧪 Recommended Tests</div>
+                      <div className="grid gap-2 text-sm text-gray-700">
+                        {selectedPrescription.additional_tests.map((test, idx) => (
+                          <div key={test.id || `${idx}-${test.name}`} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            {test.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Vitals Information */}
                   {selectedPrescription.vitals && Object.values(selectedPrescription.vitals).some(v => v) && (

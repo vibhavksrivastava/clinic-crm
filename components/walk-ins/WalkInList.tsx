@@ -84,20 +84,52 @@ export default function WalkInList({ refreshTrigger = 0 }: WalkInListProps) {
 
   const handleStatusChange = async (id: string, status: WalkInStatus) => {
     try {
+      // Get the walk-in to access medicines
+      const walkIn = walkIns.find(w => w.id === id);
+      
+      const payload: any = { id, status };
+      
+      // Always include medicines and vitals when completing walk-in
+      if (status === 'completed') {
+        if (walkIn?.medicines && walkIn.medicines.length > 0) {
+          payload.medicines = walkIn.medicines;
+        }
+        if (walkIn?.vitals && walkIn.vitals.length > 0) {
+          payload.vitals = walkIn.vitals;
+        }
+        if (walkIn?.additionalTests && walkIn.additionalTests.length > 0) {
+          payload.additionalTests = walkIn.additionalTests;
+        }
+      }
+
+      console.log('🔄 Updating walk-in status:', payload);
+
       const response = await fetch('/api/walk-ins', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update status');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update status');
+      }
+
+      const result = await response.json();
+      
+      console.log('✅ Walk-in update response:', result);
+
+      if (result.prescription) {
+        alert('✅ Walk-in completed and prescription generated successfully!');
+      } else if (status === 'completed' && walkIn?.medicines?.length > 0) {
+        alert('✅ Walk-in completed! (Prescription generation in progress)');
       }
 
       // Refresh the list
       fetchWalkIns();
     } catch (err) {
       console.error('Error updating status:', err);
+      alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to update walk-in status'}`);
     }
   };
 

@@ -136,7 +136,10 @@ export default function WalkInForm({ onSuccess, onError }: WalkInFormProps) {
       }
 
       const data = await response.json();
-      const successMsg = `Walk-in created for ${formData.name}`;
+      const isDuplicate = data.isDuplicatePatient;
+      const successMsg = isDuplicate 
+        ? `✓ Walk-in created using existing patient record (${formData.name})`
+        : `✓ Walk-in created for ${formData.name}`;
       setSuccess(successMsg);
       onSuccess?.(data.data);
 
