@@ -121,7 +121,7 @@ export default function WalkInList({ refreshTrigger = 0 }: WalkInListProps) {
 
       if (result.prescription) {
         alert('✅ Walk-in completed and prescription generated successfully!');
-      } else if (status === 'completed' && walkIn?.medicines?.length > 0) {
+      } else if (status === 'completed' && (walkIn?.medicines?.length ?? 0) > 0) {
         alert('✅ Walk-in completed! (Prescription generation in progress)');
       }
 
