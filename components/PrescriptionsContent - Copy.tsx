@@ -793,330 +793,331 @@ export function PrescriptionsContent() {
             </div>
           </div>
 
-{/* Prescription Details - Right Column */}
-<div className="lg:col-span-2">
-  {selectedPrescription ? (
-    <div
-      //id={`prescription-${selectedPrescription.id}`}
-      id="print-prescription"
-      className="bg-white shadow-2xl border border-gray-300 overflow-hidden"
-      style={{ minHeight: '1120px' }}
-    >
-      {/* Hospital Header */}
-      <div className="border-b-4 border-blue-800 px-10 pt-8 pb-6 bg-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-blue-900 tracking-wide uppercase">
-              {clinicInfo.name || 'CITY CARE HOSPITAL'}
-            </h1>
+          {/* Prescription Details - Right Column */}
+          <div className="lg:col-span-2">
+            {selectedPrescription ? (
+              <div id={`prescription-${selectedPrescription.id}`} className="bg-white rounded-lg shadow-lg border-4 border-blue-200 overflow-hidden">
+                {/* Prescription Pad Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+                  <div className="text-center mb-4">
+                    <h3 className="text-2xl font-bold">💊 {clinicInfo.name || 'Clinic Name'}</h3>
+                     <sub>Registered Address: {clinicInfo.address}</sub>
+                     <sub>Postal Code: {clinicInfo.postalCode}</sub>
+                    <sub>Phone: {clinicInfo.phone}</sub>
+                    <p className="text-sm text-blue-100">Professional Medical Prescription</p>
+                  </div>
+                  <div className="border-t border-blue-400 pt-3 text-xs text-blue-50 space-y-1">
+                    <div><strong>Branch:</strong> {clinicInfo.branch || 'Branch Name'}</div>
+                    {clinicInfo.branchAddress && (
+                      <div><strong>Branch Address:</strong> {clinicInfo.branchAddress}</div>
+                    )}
+                    {clinicInfo.branchPhone && (
+                      <div><strong>Branch Phone:</strong> {clinicInfo.branchPhone}</div>
+                    )}
+                    <div><strong>License #:</strong> MC-2026-001</div>
+                  </div>
+                </div>
 
-            <div className="mt-3 text-sm text-gray-700 leading-6">
-              <div>{clinicInfo.address}</div>
-              <div>{clinicInfo.branchAddress}</div>
-              <div>
-                Phone: {clinicInfo.phone || '9876543210'}
-                {clinicInfo.branchPhone && (
-                  <span> | Branch: {clinicInfo.branchPhone}</span>
-                )}
+                {/* Prescription Content */}
+                <div className="p-8">
+                  {/* Patient Information */}
+                  <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                    <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Patient Information</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedPrescription.patients?.first_name} {selectedPrescription.patients?.last_name}
+                    </div>
+                    {selectedPrescription.patients?.phone && (
+                      <div className="text-sm text-gray-700 mt-1">📱 {selectedPrescription.patients.phone}</div>
+                    )}
+                    <div className="text-xs text-gray-600 mt-1">Rx ID: {selectedPrescription.id.slice(0, 8).toUpperCase()}</div>
+                  </div>
+
+                  {/* Prescriber Information */}
+                  <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                    <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Prescribed By</div>
+                    <div className="text-base font-semibold text-gray-900">
+                      Dr. {selectedPrescription.users?.first_name} {selectedPrescription.users?.last_name}
+                    </div>
+                  </div>
+
+                  {/* Walk-in Information */}
+                  {selectedPrescription.walk_in_id && (
+                    <div className="mb-6 pb-4 border-b-2 border-purple-300 bg-purple-50 p-3 rounded">
+                      <div className="text-sm text-purple-600 uppercase tracking-wide font-semibold mb-2">🚶 Linked to Walk-in</div>
+                      <div className="text-sm text-gray-700">Walk-in ID: {selectedPrescription.walk_in_id.slice(0, 8).toUpperCase()}</div>
+                    </div>
+                  )}
+
+                  {/* Appointment Information */}
+                  {selectedPrescription.appointment_id && !selectedPrescription.walk_in_id && (
+                    <div className="mb-6 pb-4 border-b-2 border-green-300 bg-green-50 p-3 rounded">
+                      <div className="text-sm text-green-600 uppercase tracking-wide font-semibold mb-2">📅 Linked to Appointment</div>
+                      <div className="text-sm text-gray-700">Appointment ID: {selectedPrescription.appointment_id.slice(0, 8).toUpperCase()}</div>
+                    </div>
+                  )}
+
+                  {/* Tests Information */}
+                  {selectedPrescription.additional_tests && selectedPrescription.additional_tests.length > 0 && (
+                    <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                      <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-3">🧪 Recommended Tests</div>
+                      <div className="grid gap-2 text-sm text-gray-700">
+                        {selectedPrescription.additional_tests.map((test, idx) => (
+                          <div key={test.id || `${idx}-${test.name}`} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            {test.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vitals Information */}
+                  {selectedPrescription.vitals && Object.values(selectedPrescription.vitals).some(v => v) && (
+                    <div className="mb-6 pb-4 border-b-2 border-gray-300">
+                      <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-3">📊 Patient Vitals</div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {selectedPrescription.vitals.blood_pressure_systolic && (
+                          <div className="bg-blue-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Blood Pressure</div>
+                            <div className="font-semibold text-gray-900">
+                              {selectedPrescription.vitals.blood_pressure_systolic}/{selectedPrescription.vitals.blood_pressure_diastolic} mmHg
+                            </div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.heart_rate && (
+                          <div className="bg-red-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Heart Rate</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.heart_rate} bpm</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.temperature && (
+                          <div className="bg-orange-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Temperature</div>
+                            <div className="font-semibold text-gray-900">
+                              {selectedPrescription.vitals.temperature}°{selectedPrescription.vitals.temperature_unit}
+                            </div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.oxygen_saturation && (
+                          <div className="bg-green-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">SpO2</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.oxygen_saturation}%</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.weight && (
+                          <div className="bg-purple-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Weight</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.weight} {selectedPrescription.vitals.weight_unit}</div>
+                          </div>
+                        )}
+                        {selectedPrescription.vitals.height && (
+                          <div className="bg-indigo-50 p-2 rounded">
+                            <div className="text-xs text-gray-600 font-semibold">Height</div>
+                            <div className="font-semibold text-gray-900">{selectedPrescription.vitals.height} {selectedPrescription.vitals.height_unit}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rx Symbol and Medications */}
+                  <div className="mb-6">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="text-5xl font-bold text-blue-600">℞</div>
+                      <div>
+                        <div className="text-xs text-gray-600 uppercase tracking-wide font-semibold">Medications</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 ml-2">
+                      {selectedPrescription.medications && selectedPrescription.medications.map((med, idx) => (
+                        <div key={idx} className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="text-lg font-bold text-gray-900 mb-2">{med.medication_name}</div>
+                          <div className="text-sm font-semibold text-gray-800 mb-2">
+                            <span className="bg-blue-100 px-3 py-1 rounded border border-blue-300">{med.dosage}</span>
+                          </div>
+                          <div className="text-sm text-gray-700 grid grid-cols-2 gap-2">
+                            <div><strong>Frequency:</strong> {med.frequency}</div>
+                            <div><strong>Quantity:</strong> {med.quantity} units</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Divider Line */}
+                  <div className="my-6 border-t-2 border-dashed border-gray-400"></div>
+
+                  {/* Instructions and Status */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <div className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">Issued Date</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {new Date(selectedPrescription.issued_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">Status</div>
+                      <div className="mt-1">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                            selectedPrescription.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : selectedPrescription.status === 'expired'
+                              ? 'bg-red-100 text-red-800'
+                              : selectedPrescription.status === 'refilled'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {selectedPrescription.status.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes Section */}
+                  {selectedPrescription.notes && (
+                    <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <div className="text-sm font-semibold text-gray-900 mb-2">Notes</div>
+                      <div className="text-sm text-gray-700">{selectedPrescription.notes}</div>
+                    </div>
+                  )}
+
+                  {/* Signature Line */}
+                  <div className="mb-6 pt-4">
+                    <div className="border-t-2 border-gray-800 w-40 mb-2"></div>
+                    <div className="text-xs text-gray-600 font-semibold">Doctor's Signature</div>
+                  </div>
+
+                  {/* Important Notes */}
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded text-xs text-gray-700">
+                    <strong>⚠️ Important:</strong> Keep in cool, dry place. Do not share with others. Follow instructions exactly.
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    {viewId && (
+                      <button
+                        onClick={() => {
+                          setViewId(null);
+                          setSelectedPrescription(null);
+                          window.history.replaceState({}, '', '/prescriptions');
+                        }}
+                        className="flex-1 px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition text-sm"
+                      >
+                        ← Back to List
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const element = document.getElementById(`prescription-${selectedPrescription.id}`);
+                        if (!element) {
+                          alert('Error: Unable to find prescription content to print');
+                          return;
+                        }
+                        
+                        const printWindow = window.open('', '', 'width=900,height=1200');
+                        if (!printWindow) {
+                          alert('Error: Unable to open print window. Please check your browser popup settings.');
+                          return;
+                        }
+                        
+                        // Clone the element and remove action buttons
+                        const printContent = element.cloneNode(true) as HTMLElement;
+                        const actionsDiv = printContent.querySelector('.flex.gap-3.pt-4');
+                        if (actionsDiv) {
+                          actionsDiv.remove();
+                        }
+                        
+                        // Get all stylesheets from the main document
+                        const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+                        let styleHTML = '';
+                        
+                        styles.forEach((style) => {
+                          if (style.tagName === 'STYLE') {
+                            styleHTML += style.outerHTML;
+                          } else if (style.tagName === 'LINK') {
+                            styleHTML += style.outerHTML;
+                          }
+                        });
+                        
+                        printWindow.document.open();
+                        printWindow.document.write(`
+                          <!DOCTYPE html>
+                          <html>
+                            <head>
+                              <meta charset="UTF-8">
+                              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                              <title>Prescription</title>
+                              ${styleHTML}
+                              <style>
+                                @media print {
+                                  * { margin: 0 !important; padding: 0 !important; }
+                                  body { margin: 0 !important; padding: 0 !important; background: white !important; }
+                                  .no-print { display: none !important; }
+                                  .fixed { position: relative !important; }
+                                  html, body { height: 100% !important; }
+                                }
+                                body { 
+                                  font-family: system-ui, -apple-system, sans-serif;
+                                  background: white;
+                                  color: #333;
+                                  line-height: 1.5;
+                                }
+                              </style>
+                            </head>
+                            <body>
+                              ${printContent.outerHTML}
+                            </body>
+                          </html>
+                        `);
+                        printWindow.document.close();
+                        
+                        // Wait for styles to load before printing
+                        setTimeout(() => {
+                          printWindow.focus();
+                          printWindow.print();
+                          setTimeout(() => printWindow.close(), 1000);
+                        }, 500);
+                      }}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
+                    >
+                      🖨️ Print
+                    </button>
+                    <button
+                      onClick={() => handleEdit(selectedPrescription)}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition text-sm"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDelete(selectedPrescription.id);
+                        setSelectedPrescription(null);
+                      }}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition text-sm"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-gray-100 px-8 py-3 text-center text-xs text-gray-600 border-t border-gray-300">
+                  <div>This is a digitally issued prescription. Valid for {selectedPrescription.status === 'active' ? '12 months' : '0 months'} from issue date.</div>
+                </div>
               </div>
-              <div>Postal Code: {clinicInfo.postalCode}</div>
-            </div>
-          </div>
-
-          <div className="text-right text-sm text-gray-700">
-            <div className="font-bold text-lg text-blue-900 mb-2">
-              MEDICAL PRESCRIPTION
-            </div>
-            <div>Reg No: MH-MED-2026-001</div>
-            <div>Branch: {clinicInfo.branch || 'Main Branch'}</div>
-            <div>
-              Date:{' '}
-              {new Date(selectedPrescription.issued_date).toLocaleDateString()}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Patient + Doctor Details */}
-      <div className="px-10 py-6 border-b border-gray-300 bg-gray-50">
-        <div className="grid grid-cols-2 gap-8 text-sm">
-          <div className="space-y-2">
-            <div>
-              <span className="font-semibold text-gray-800">Patient Name:</span>{' '}
-              <span className="uppercase tracking-wide font-medium">
-                {selectedPrescription.patients?.first_name}{' '}
-                {selectedPrescription.patients?.last_name}
-              </span>
-            </div>
-
-            <div>
-              <span className="font-semibold text-gray-800">Phone:</span>{' '}
-              {selectedPrescription.patients?.phone || 'N/A'}
-            </div>
-
-            <div>
-              <span className="font-semibold text-gray-800">Prescription ID:</span>{' '}
-              {selectedPrescription.id.slice(0, 10).toUpperCase()}
-            </div>
-          </div>
-
-          <div className="space-y-2 text-right">
-            <div>
-              <span className="font-semibold text-gray-800">Consulting Doctor:</span>
-            </div>
-
-            <div className="text-lg font-bold text-blue-900">
-              Dr. {selectedPrescription.users?.first_name}{' '}
-              {selectedPrescription.users?.last_name}
-            </div>
-
-            <div className="text-gray-700">MBBS, MD</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Vitals Section */}
-      {selectedPrescription.vitals &&
-        Object.values(selectedPrescription.vitals).some((v) => v) && (
-          <div className="px-10 py-5 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-blue-900 mb-4 uppercase tracking-wide">
-              Patient Vitals
-            </h3>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              {selectedPrescription.vitals.blood_pressure_systolic && (
-                <div className="border rounded-lg p-3 bg-blue-50">
-                  <div className="font-semibold text-gray-700">Blood Pressure</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.blood_pressure_systolic}/
-                    {selectedPrescription.vitals.blood_pressure_diastolic} mmHg
-                  </div>
-                </div>
-              )}
-
-              {selectedPrescription.vitals.heart_rate && (
-                <div className="border rounded-lg p-3 bg-red-50">
-                  <div className="font-semibold text-gray-700">Heart Rate</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.heart_rate} bpm
-                  </div>
-                </div>
-              )}
-
-              {selectedPrescription.vitals.temperature && (
-                <div className="border rounded-lg p-3 bg-orange-50">
-                  <div className="font-semibold text-gray-700">Temperature</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.temperature}°
-                    {selectedPrescription.vitals.temperature_unit || 'C'}
-                  </div>
-                </div>
-              )}
-
-              {selectedPrescription.vitals.oxygen_saturation && (
-                <div className="border rounded-lg p-3 bg-green-50">
-                  <div className="font-semibold text-gray-700">SpO₂</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.oxygen_saturation}%
-                  </div>
-                </div>
-              )}
-
-              {selectedPrescription.vitals.weight && (
-                <div className="border rounded-lg p-3 bg-purple-50">
-                  <div className="font-semibold text-gray-700">Weight</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.weight}{' '}
-                    {selectedPrescription.vitals.weight_unit}
-                  </div>
-                </div>
-              )}
-
-              {selectedPrescription.vitals.height && (
-                <div className="border rounded-lg p-3 bg-indigo-50">
-                  <div className="font-semibold text-gray-700">Height</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {selectedPrescription.vitals.height}{' '}
-                    {selectedPrescription.vitals.height_unit}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-      {/* Medicines */}
-      <div className="px-10 py-8 min-h-[450px]">
-        <div className="flex items-start gap-4 mb-8">
-          <div className="text-7xl font-bold text-blue-900 leading-none">℞</div>
-
-          <div>
-            <h3 className="text-2xl font-bold text-blue-900 uppercase tracking-wide">
-              Prescription
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Follow the medications exactly as advised by the doctor.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {selectedPrescription.medications?.map((med, idx) => (
-            <div
-              key={idx}
-              className="border-b border-dashed border-gray-300 pb-5"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {idx + 1}. {med.medication_name}
-                  </div>
-
-                  <div className="mt-3 text-gray-700 space-y-1 text-sm">
-                    <div>
-                      <span className="font-semibold">Dosage:</span>{' '}
-                      {med.dosage}
-                    </div>
-
-                    <div>
-                      <span className="font-semibold">Frequency:</span>{' '}
-                      {med.frequency}
-                    </div>
-
-                    <div>
-                      <span className="font-semibold">Quantity:</span>{' '}
-                      {med.quantity} units
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-sm text-gray-500 font-medium">
-                  #{idx + 1}
+            ) : (
+              <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-12 text-center h-full flex items-center justify-center">
+                <div className="text-gray-500">
+                  <p className="text-lg font-semibold mb-2">Select a prescription to view details</p>
+                  <p className="text-sm">Click on any prescription from the list to display its full details here.</p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tests */}
-      {selectedPrescription.additional_tests &&
-        selectedPrescription.additional_tests.length > 0 && (
-          <div className="px-10 pb-6">
-            <div className="border rounded-xl p-5 bg-yellow-50">
-              <h3 className="text-lg font-bold text-yellow-800 mb-3 uppercase tracking-wide">
-                Recommended Tests
-              </h3>
-
-              <ul className="space-y-2 text-sm text-gray-800">
-                {selectedPrescription.additional_tests.map((test, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <span className="text-yellow-700">•</span>
-                    <span>{test.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-      {/* Notes */}
-      {selectedPrescription.notes && (
-        <div className="px-10 pb-6">
-          <div className="border rounded-xl p-5 bg-gray-50">
-            <h3 className="text-lg font-bold text-gray-800 mb-2 uppercase tracking-wide">
-              Doctor Notes
-            </h3>
-
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-7">
-              {selectedPrescription.notes}
-            </p>
+            )}
           </div>
         </div>
       )}
-
-      {/* Footer + Signature */}
-      <div className="mt-10 border-t-2 border-blue-900 px-10 py-8 bg-gray-50">
-        <div className="flex items-end justify-between">
-          <div className="text-xs text-gray-600 leading-6 max-w-md">
-            <div>
-              ⚠️ This prescription is digitally generated and valid only with
-              authorized doctor consultation.
-            </div>
-
-            <div>
-              Please complete the full course of medicines unless advised
-              otherwise.
-            </div>
-          </div>
-
-          <div className="text-center min-w-[220px]">
-            <div className="h-16 flex items-end justify-center text-2xl italic text-blue-900 font-semibold">
-              Dr. {selectedPrescription.users?.last_name}
-            </div>
-
-            <div className="border-t-2 border-gray-700 pt-2 text-sm font-semibold text-gray-700">
-              Authorized Signature
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Buttons */}
-      <div className="p-6 border-t bg-white flex gap-3 no-print">
-        {viewId && (
-          <button
-            onClick={() => {
-              setViewId(null);
-              setSelectedPrescription(null);
-              window.history.replaceState({}, '', '/prescriptions');
-            }}
-            className="flex-1 px-4 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition"
-          >
-            ← Back
-          </button>
-        )}
-
-      <button
-        onClick={() => window.print()}
-        className="flex-1 px-4 py-3 bg-blue-700 text-white font-semibold rounded-lg hover:bg-blue-800 transition"
-      >
-        🖨 Print Prescription
-      </button>
-
-        <button
-          onClick={() => handleEdit(selectedPrescription)}
-          className="flex-1 px-4 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
-        >
-          ✏ Edit
-        </button>
-
-        <button
-          onClick={() => {
-            handleDelete(selectedPrescription.id);
-            setSelectedPrescription(null);
-          }}
-          className="flex-1 px-4 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
-        >
-          🗑 Delete
-        </button>
-      </div>
     </div>
-  ) : (
-    <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-12 text-center h-full flex items-center justify-center">
-      <div className="text-gray-500">
-        <p className="text-lg font-semibold mb-2">
-          Select a prescription to view details
-        </p>
-        <p className="text-sm">
-          Click any prescription from the left panel.
-        </p>
-      </div>
-    </div>
-  )}
-</div>
-</div>
-)}
-</div>
-);
+  );
 }

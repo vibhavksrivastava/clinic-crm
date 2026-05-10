@@ -72,6 +72,35 @@ body {
   @apply outline-2 outline-offset-2 outline-blue-500;
 }
 
+@media print {
+
+  body * {
+    visibility: hidden;
+  }
+
+  #print-prescription,
+  #print-prescription * {
+    visibility: visible;
+  }
+
+  #print-prescription {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+}
+
 /* Stack cards better on mobile */
 @media (max-width: 768px) {
   .grid {
