@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
 
-export default async function POST(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+
+    const { id } = await params;
+
     const user = await getSessionFromRequest(request);
 
     if (!user) {
@@ -107,7 +110,7 @@ export default async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Inventory updated successfully',
+      id: purchaseOrderId
     });
   } catch (error: any) {
     console.error('UPDATE INVENTORY ERROR:', error);
