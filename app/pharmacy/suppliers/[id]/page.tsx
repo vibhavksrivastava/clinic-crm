@@ -1,4 +1,4 @@
-'use client';
+//'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
 
-export default function GET(
+export default async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
