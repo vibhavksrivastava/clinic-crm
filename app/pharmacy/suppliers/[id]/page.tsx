@@ -4,9 +4,11 @@ import Header from '@/components/Header';
 import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
 
+type Props = { params: Promise<{ id: string }> }
+
 export default async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  //request: Request,
+  { params }: Props
 ) {
   try {
     const { id } = await params;
