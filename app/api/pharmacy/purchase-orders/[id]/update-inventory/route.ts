@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
 
-export async function POST(
+export default async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getSessionFromRequest(request);
@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const purchaseOrderId = params.id;
+    const purchaseOrderId = (await params).id;
 
     // 1. Get PO + Items
     const { data: po } = await supabase
