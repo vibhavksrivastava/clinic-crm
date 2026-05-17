@@ -16,6 +16,8 @@ interface Supplier {
 interface Product {
   id: string;
   name: string;
+  gst?: number;
+  unit_price?: number;
 }
 
 export default function PurchaseOrderContent() {
@@ -92,7 +94,6 @@ export default function PurchaseOrderContent() {
       );
 
       setSupplier(found || null);
-
     } catch (error) {
       console.error(error);
     }
@@ -112,7 +113,6 @@ export default function PurchaseOrderContent() {
       setProducts(
         Array.isArray(data) ? data : []
       );
-
     } catch (error) {
       console.error(error);
     }
@@ -159,9 +159,13 @@ export default function PurchaseOrderContent() {
       updated[index].gst_percent || 0
     );
 
+    const baseAmount = qty * price;
+
+    const gstAmount =
+      (baseAmount * gst) / 100;
+
     updated[index].total_amount =
-      qty * price +
-      (qty * price * gst) / 100;
+      baseAmount + gstAmount;
 
     setItems(updated);
   };
@@ -247,7 +251,7 @@ export default function PurchaseOrderContent() {
       }
 
       for (const item of items) {
-        await fetch(
+        const itemRes = await fetch(
           '/api/pharmacy/purchase-items',
           {
             method: 'POST',
@@ -266,6 +270,20 @@ export default function PurchaseOrderContent() {
             }),
           }
         );
+
+        const itemData =
+          await itemRes.json();
+
+        if (!itemRes.ok) {
+          console.error(itemData);
+
+          alert(
+            itemData.error ||
+              'Failed to create purchase item'
+          );
+
+          return;
+        }
       }
 
       alert(
@@ -273,16 +291,14 @@ export default function PurchaseOrderContent() {
       );
 
       router.push(
-        '/pharmacy/suppliers'
+        '/pharmacy/purchase-orders'
       );
-
     } catch (error) {
       console.error(error);
 
       alert(
         'Failed to create purchase order'
       );
-
     } finally {
       setLoading(false);
     }
@@ -293,9 +309,7 @@ export default function PurchaseOrderContent() {
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-
         <div className="bg-white rounded-xl shadow p-6">
-
           <h1 className="text-3xl font-bold mb-2">
             Create Purchase Order
           </h1>
@@ -311,7 +325,6 @@ export default function PurchaseOrderContent() {
           {/* FORM SECTION */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-
             <input
               type="text"
               placeholder="Invoice Number"
@@ -342,17 +355,13 @@ export default function PurchaseOrderContent() {
               }
               className="border rounded-lg px-4 py-3"
             />
-
           </div>
 
           {/* ITEMS TABLE */}
 
           <div className="overflow-x-auto">
-
             <table className="min-w-full border">
-
               <thead className="bg-gray-100">
-
                 <tr>
                   <th className="px-4 py-2">
                     Medicine
@@ -367,23 +376,37 @@ export default function PurchaseOrderContent() {
                   </th>
 
                   <th className="px-4 py-2">
+                    GST %
+                  </th>
+
+                  <th className="px-4 py-2">
+                    MRP
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Batch
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Expiry
+                  </th>
+
+                  <th className="px-4 py-2">
                     Total
                   </th>
                 </tr>
-
               </thead>
 
               <tbody>
-
                 {items.map(
                   (item, index) => (
                     <tr
                       key={index}
                       className="border-t"
                     >
+                      {/* PRODUCT */}
 
                       <td className="px-2 py-2">
-
                         <select
                           value={
                             item.product_id
@@ -414,6 +437,17 @@ export default function PurchaseOrderContent() {
                               product_name:
                                 product?.name ||
                                 '',
+
+                              gst_percent:
+                                Number(
+                                  product?.gst ||
+                                    0
+                                ),
+
+                              mrp: Number(
+                                product?.unit_price ||
+                                  0
+                              ),
                             };
 
                             setItems(
@@ -421,7 +455,6 @@ export default function PurchaseOrderContent() {
                             );
                           }}
                         >
-
                           <option value="">
                             Select
                           </option>
@@ -436,17 +469,18 @@ export default function PurchaseOrderContent() {
                                   product.id
                                 }
                               >
-                                {product.name}
+                                {
+                                  product.name
+                                }
                               </option>
                             )
                           )}
-
                         </select>
-
                       </td>
 
-                      <td className="px-2 py-2">
+                      {/* QTY */}
 
+                      <td className="px-2 py-2">
                         <input
                           type="number"
                           value={
@@ -461,11 +495,11 @@ export default function PurchaseOrderContent() {
                           }
                           className="border rounded px-2 py-1 w-20"
                         />
-
                       </td>
 
-                      <td className="px-2 py-2">
+                      {/* PURCHASE PRICE */}
 
+                      <td className="px-2 py-2">
                         <input
                           type="number"
                           value={
@@ -480,26 +514,95 @@ export default function PurchaseOrderContent() {
                           }
                           className="border rounded px-2 py-1 w-28"
                         />
-
                       </td>
 
-                      <td className="px-2 py-2 font-semibold">
+                      {/* GST */}
 
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={
+                            item.gst_percent
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'gst_percent',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-20"
+                        />
+                      </td>
+
+                      {/* MRP */}
+
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.mrp}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'mrp',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-24"
+                        />
+                      </td>
+
+                      {/* BATCH */}
+
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={
+                            item.batch_number
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'batch_number',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-28"
+                        />
+                      </td>
+
+                      {/* EXPIRY */}
+
+                      <td className="px-2 py-2">
+                        <input
+                          type="date"
+                          value={
+                            item.expiry_date
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'expiry_date',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1"
+                        />
+                      </td>
+
+                      {/* TOTAL */}
+
+                      <td className="px-2 py-2 font-semibold">
                         ₹
                         {Number(
                           item.total_amount
                         ).toFixed(2)}
-
                       </td>
-
                     </tr>
                   )
                 )}
-
               </tbody>
-
             </table>
-
           </div>
 
           <button
@@ -509,8 +612,9 @@ export default function PurchaseOrderContent() {
             + Add Item
           </button>
 
-          <div className="mt-6">
+          {/* NOTES */}
 
+          <div className="mt-6">
             <textarea
               placeholder="Notes"
               value={formData.notes}
@@ -523,13 +627,12 @@ export default function PurchaseOrderContent() {
               rows={4}
               className="w-full border rounded-lg px-4 py-3"
             />
-
           </div>
 
+          {/* TOTALS */}
+
           <div className="mt-6 flex justify-between items-center">
-
             <div className="text-xl font-bold">
-
               <div>
                 Subtotal: ₹
                 {subtotal.toFixed(2)}
@@ -539,17 +642,15 @@ export default function PurchaseOrderContent() {
                 GST: ₹
                 {gstAmount.toFixed(2)}
               </div>
-
             </div>
 
             <div className="text-2xl font-bold">
-
               Total: ₹
               {grandTotal.toFixed(2)}
-
             </div>
-
           </div>
+
+          {/* SUBMIT */}
 
           <button
             onClick={handleSubmit}
@@ -560,9 +661,7 @@ export default function PurchaseOrderContent() {
               ? 'Saving...'
               : 'Create Purchase Order'}
           </button>
-
         </div>
-
       </div>
     </div>
   );
