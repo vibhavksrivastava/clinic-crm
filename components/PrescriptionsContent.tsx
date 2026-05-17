@@ -10,6 +10,10 @@ interface Medicine {
   dosage: string;
   frequency: string;
   quantity: number;
+  // Pharmacy fields
+  dispensed_quantity?: number;
+  pending_quantity?: number;
+  dispense_status?: 'pending' | 'partial' | 'completed';
 }
 
 interface Vitals {
@@ -101,6 +105,7 @@ export function PrescriptionsContent() {
     }, []);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [medicinesMaster, setMedicinesMaster] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -110,7 +115,8 @@ export function PrescriptionsContent() {
   const [viewId, setViewId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const [medicines, setMedicines] = useState<Medicine[]>([
-    { id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
+    //{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
+    { id: '1',  medication_name: '',  dosage: '',  frequency: '',  quantity: 0,  dispensed_quantity: 0,  pending_quantity: 0,  dispense_status: 'pending',}
   ]);
   const [formData, setFormData] = useState({
     patient_id: '',
@@ -172,16 +178,19 @@ export function PrescriptionsContent() {
       if (walkInId) {
         prescriptionsUrl += `?walk_in_id=${walkInId}`;
       }
-      const [prescriptionsRes, patientsRes] = await Promise.all([
+      const [prescriptionsRes, patientsRes, medicinesRes] = await Promise.all([
         fetch(prescriptionsUrl),
         fetch('/api/patients'),
+        fetch('/api/medicines'),
       ]);
 
       const prescriptionsData = await prescriptionsRes.json();
       const patientsData = await patientsRes.json();
+      const medicinesData = await medicinesRes.json();
 
       setPrescriptions(Array.isArray(prescriptionsData) ? prescriptionsData : []);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
+      setMedicinesMaster(Array.isArray(medicinesData) ? medicinesData : []);
       
       // Auto-select first prescription if filtering by walk_in
       if (walkInId && Array.isArray(prescriptionsData) && prescriptionsData.length > 0 && autoSelectFirst) {
@@ -292,7 +301,8 @@ export function PrescriptionsContent() {
       vitals: convertedVitals,
     });
     setMedicines(rx.medications && Array.isArray(rx.medications) && rx.medications.length > 0 ? rx.medications : [
-      { id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
+      //{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
+      { id: '1',  medication_name: '',  dosage: '',  frequency: '',  quantity: 0,  dispensed_quantity: 0,  pending_quantity: 0,  dispense_status: 'pending',}
     ]);
     setEditingId(rx.id);
     setShowForm(true);
@@ -310,7 +320,10 @@ export function PrescriptionsContent() {
   };
 
   const resetForm = () => {
-    setMedicines([{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }]);
+    setMedicines([
+      //{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
+      { id: '1',  medication_name: '',  dosage: '',  frequency: '',  quantity: 0,  dispensed_quantity: 0,  pending_quantity: 0,  dispense_status: 'pending',}
+    ]);
     setFormData({
       patient_id: '',
       user_id: '',
@@ -564,14 +577,29 @@ export function PrescriptionsContent() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">Medication Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g., Amoxicillin"
-                          value={med.medication_name}
-                          onChange={(e) => handleMedicineChange(med.id, 'medication_name', e.target.value)}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <select
+  value={med.medication_name}
+  onChange={(e) =>
+    handleMedicineChange(
+      med.id,
+      'medication_name',
+      e.target.value
+    )
+  }
+  required
+  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+>
+  <option value="">Select Medicine</option>
+
+  {medicinesMaster.map((medicine) => (
+    <option
+      key={medicine.id}
+      value={medicine.name}
+    >
+      {medicine.name}
+    </option>
+  ))}
+</select>
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">Dosage</label>

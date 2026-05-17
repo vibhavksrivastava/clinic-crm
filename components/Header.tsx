@@ -45,6 +45,7 @@ export default function Header() {
     { href: '/walk-ins', label: 'Walk-ins' },
     { href: '/prescriptions', label: 'Prescriptions' },
     { href: '/invoicing', label: 'Invoicing' },
+    { href: '/pharmacy', label: 'Pharmacy' },
   ];
 
   return (

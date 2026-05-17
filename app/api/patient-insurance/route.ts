@@ -1,72 +1,237 @@
 import { supabase } from '@/lib/db/client';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const patientId = searchParams.get('patient_id');
-
+// ================= GET =================
+export async function GET(req: Request) {
   try {
-    let query = supabase.from('patient_insurance').select('*');
+    const { searchParams } = new URL(req.url);
 
-    if (patientId) {
-      query = query.eq('patient_id', patientId);
+    const organizationId =
+      searchParams.get('organization_id');
+
+    const branchId =
+      searchParams.get('branch_id');
+
+    let query = supabase
+      .from('pharmacy_products')
+      .select('*')
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (organizationId) {
+      query = query.eq(
+        'organization_id',
+        organizationId
+      );
+    }
+
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+
+    if (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching patient insurance:', error);
-    return NextResponse.json({ error: 'Failed to fetch patient insurance' }, { status: 500 });
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to fetch products',
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
 
-export async function POST(req: NextRequest) {
+// ================= POST =================
+export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { error } = await supabase.from('patient_insurance').insert([body]);
-    if (error) throw error;
+    const { data, error } = await supabase
+      .from('pharmacy_products')
+      .insert([
+        {
+          organization_id:
+            body.organization_id,
 
-    return NextResponse.json({ message: 'Insurance record created' }, { status: 201 });
+          branch_id: body.branch_id,
+
+          name: body.name,
+
+          description: body.description,
+
+          sku: body.sku,
+
+          barcode: body.barcode,
+
+          category: body.category,
+
+          unit_price: body.unit_price,
+
+          cost_price: body.cost_price,
+
+          reorder_level:
+            body.reorder_level,
+
+          is_active: body.is_active,
+
+          supplier_id: body.supplier_id,
+        },
+      ])
+      .select();
+
+    if (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data,
+    });
   } catch (error) {
-    console.error('Error creating insurance:', error);
-    return NextResponse.json({ error: 'Failed to create insurance record' }, { status: 500 });
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to create product',
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
 
-export async function PUT(req: NextRequest) {
+// ================= PUT =================
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+
+    const { data, error } = await supabase
+      .from('pharmacy_products')
+      .update({
+        name: body.name,
+
+        description: body.description,
+
+        sku: body.sku,
+
+        barcode: body.barcode,
+
+        category: body.category,
+
+        unit_price: body.unit_price,
+
+        cost_price: body.cost_price,
+
+        reorder_level:
+          body.reorder_level,
+
+        is_active: body.is_active,
+
+        supplier_id: body.supplier_id,
+
+        updated_at: new Date(),
+      })
+      .eq('id', body.id)
+      .select();
+
+    if (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to update product',
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+// ================= DELETE =================
+export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const id = searchParams.get('id');
-    const body = await req.json();
 
     const { error } = await supabase
-      .from('patient_insurance')
-      .update(body)
+      .from('pharmacy_products')
+      .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
-    return NextResponse.json({ message: 'Insurance record updated' });
+    return NextResponse.json({
+      success: true,
+    });
   } catch (error) {
-    console.error('Error updating insurance:', error);
-    return NextResponse.json({ error: 'Failed to update insurance record' }, { status: 500 });
-  }
-}
+    console.error(error);
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-
-    const { error } = await supabase.from('patient_insurance').delete().eq('id', id);
-    if (error) throw error;
-
-    return NextResponse.json({ message: 'Insurance record deleted' });
-  } catch (error) {
-    console.error('Error deleting insurance:', error);
-    return NextResponse.json({ error: 'Failed to delete insurance record' }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to delete product',
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
