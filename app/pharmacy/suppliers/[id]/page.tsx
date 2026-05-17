@@ -3,6 +3,7 @@
 import Header from '@/components/Header';
 import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 type Props = { params: Promise<{ id: string }> }
 
