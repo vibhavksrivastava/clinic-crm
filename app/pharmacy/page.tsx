@@ -130,24 +130,28 @@ const recentBills = [
 
 const quickActions = [
   {
-    title: 'Add Medicine',
+    title: 'Add Suppliers',
     icon: Plus,
     color: 'bg-blue-600',
+    link: '/pharmacy/suppliers', // ✅ NEW LINK FOR ADD suppliers
   },
   {
     title: 'Create Bill',
     icon: FileText,
     color: 'bg-green-600',
+    link: '/pharmacy/bills/create', // ✅ NEW LINK FOR CREATE BILL
   },
   {
-    title: 'Purchase Order',
+    title: 'Purchase Orders',
     icon: Truck,
     color: 'bg-purple-600',
+    link: '/pharmacy/purchase-orders', // ✅ NEW LINK FOR PURCHASE ORDER
   },
   {
     title: 'Sales Report',
     icon: BarChart3,
     color: 'bg-orange-600',
+    link: '/pharmacy/reports/sales', // ✅ NEW LINK FOR SALES REPORT
   },
 ];
 
@@ -171,7 +175,7 @@ export default function PharmacyDashboardPage() {
           </div>
 
           <button
-           onClick={() => router.push('/pharmacy/purchases')}
+           onClick={() => router.push('/pharmacy/products')} // ✅ NAVIGATE TO NEW MEDICINE PAGE
            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700">
             + Add New Medicine
           </button>
@@ -329,6 +333,8 @@ export default function PharmacyDashboardPage() {
 
                 return (
                   <button
+                    onClick={() => router.push(action.link)} // ✅ NAVIGATE TO NEW MEDICINE PAGE
+           
                     key={index}
                     className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 p-5 transition hover:scale-[1.02] hover:shadow-md"
                   >

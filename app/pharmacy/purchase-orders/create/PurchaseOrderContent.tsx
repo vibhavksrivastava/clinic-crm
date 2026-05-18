@@ -305,410 +305,309 @@ export default function PurchaseOrderContent() {
   };
 
   return (
-  <div className="min-h-screen bg-slate-50">
-    <Header />
+    <div className="min-h-screen bg-gray-50">
+      <Header />
 
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-
-        {/* HEADER */}
-
-        <div className="border-b border-slate-200 px-4 sm:px-6 py-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-xl shadow p-6">
+          <h1 className="text-3xl font-bold mb-2">
             Create Purchase Order
           </h1>
 
-          <p className="text-slate-500 mt-2 text-sm sm:text-base">
-            Supplier:
-            <span className="font-semibold text-slate-700 ml-1">
-              {supplier?.supplier_name || 'Loading...'}
+          <p className="text-gray-600 mb-6">
+            Supplier:{' '}
+            <span className="font-semibold">
+              {supplier?.supplier_name ||
+                'Loading...'}
             </span>
           </p>
-        </div>
-
-        <div className="p-4 sm:p-6">
 
           {/* FORM SECTION */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <input
+              type="text"
+              placeholder="Invoice Number"
+              value={
+                formData.invoice_number
+              }
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  invoice_number:
+                    e.target.value,
+                })
+              }
+              className="border rounded-lg px-4 py-3"
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Invoice Number
-              </label>
-
-              <input
-                type="text"
-                placeholder="Enter invoice number"
-                value={formData.invoice_number}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    invoice_number: e.target.value,
-                  })
-                }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">
-                Purchase Date
-              </label>
-
-              <input
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    purchase_date: e.target.value,
-                  })
-                }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
+            <input
+              type="date"
+              value={
+                formData.purchase_date
+              }
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  purchase_date:
+                    e.target.value,
+                })
+              }
+              className="border rounded-lg px-4 py-3"
+            />
           </div>
 
-          {/* DESKTOP TABLE */}
+          {/* ITEMS TABLE */}
 
-          <div className="hidden lg:block overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-slate-700">
+          <div className="overflow-x-auto">
+            <table className="min-w-full border">
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left">Medicine</th>
-                  <th className="px-4 py-3 text-left">Qty</th>
-                  <th className="px-4 py-3 text-left">Purchase Price</th>
-                  <th className="px-4 py-3 text-left">GST %</th>
-                  <th className="px-4 py-3 text-left">MRP</th>
-                  <th className="px-4 py-3 text-left">Batch</th>
-                  <th className="px-4 py-3 text-left">Expiry</th>
-                  <th className="px-4 py-3 text-left">Total</th>
+                  <th className="px-4 py-2">
+                    Medicine
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Qty
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Purchase Price
+                  </th>
+
+                  <th className="px-4 py-2">
+                    GST %
+                  </th>
+
+                  <th className="px-4 py-2">
+                    MRP
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Batch
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Expiry
+                  </th>
+
+                  <th className="px-4 py-2">
+                    Total
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
-                {items.map((item, index) => (
-                  <tr
-                    key={index}
-                    className="border-t border-slate-200"
-                  >
-                    {/* PRODUCT */}
+                {items.map(
+                  (item, index) => (
+                    <tr
+                      key={index}
+                      className="border-t"
+                    >
+                      {/* PRODUCT */}
 
-                    <td className="px-3 py-3 min-w-[220px]">
-                      <select
-                        value={item.product_id}
-                        className="w-full border rounded-lg px-3 py-2"
-                        onChange={(e) => {
-                          const value = e.target.value;
+                      <td className="px-2 py-2">
+                        <select
+                          value={
+                            item.product_id
+                          }
+                          className="border rounded px-2 py-1 w-full"
+                          onChange={(e) => {
+                            const value =
+                              e.target.value;
 
-                          const product = products.find(
-                            (p) => p.id === value
-                          );
+                            const product =
+                              products.find(
+                                (p) =>
+                                  p.id ===
+                                  value
+                              );
 
-                          const updated = [...items];
+                            const updated =
+                              [...items];
 
-                          updated[index] = {
-                            ...updated[index],
-                            product_id: value,
-                            product_name:
-                              product?.name || '',
-                            gst_percent: Number(
-                              product?.gst || 0
-                            ),
-                            mrp: Number(
-                              product?.unit_price || 0
-                            ),
-                          };
+                            updated[index] = {
+                              ...updated[
+                                index
+                              ],
 
-                          setItems(updated);
-                        }}
-                      >
-                        <option value="">
-                          Select Medicine
-                        </option>
+                              product_id:
+                                value,
 
-                        {products.map((product) => (
-                          <option
-                            key={product.id}
-                            value={product.id}
-                          >
-                            {product.name}
+                              product_name:
+                                product?.name ||
+                                '',
+
+                              gst_percent:
+                                Number(
+                                  product?.gst ||
+                                    0
+                                ),
+
+                              mrp: Number(
+                                product?.unit_price ||
+                                  0
+                              ),
+                            };
+
+                            setItems(
+                              updated
+                            );
+                          }}
+                        >
+                          <option value="">
+                            Select
                           </option>
-                        ))}
-                      </select>
-                    </td>
 
-                    {/* QTY */}
+                          {products.map(
+                            (product) => (
+                              <option
+                                key={
+                                  product.id
+                                }
+                                value={
+                                  product.id
+                                }
+                              >
+                                {
+                                  product.name
+                                }
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'quantity',
-                            e.target.value
-                          )
-                        }
-                        className="w-20 border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* QTY */}
 
-                    {/* PURCHASE PRICE */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={
+                            item.quantity
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'quantity',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-20"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        value={item.purchase_price}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'purchase_price',
-                            e.target.value
-                          )
-                        }
-                        className="w-28 border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* PURCHASE PRICE */}
 
-                    {/* GST */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={
+                            item.purchase_price
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'purchase_price',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-28"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        value={item.gst_percent}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'gst_percent',
-                            e.target.value
-                          )
-                        }
-                        className="w-20 border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* GST */}
 
-                    {/* MRP */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={
+                            item.gst_percent
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'gst_percent',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-20"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
-                        value={item.mrp}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'mrp',
-                            e.target.value
-                          )
-                        }
-                        className="w-24 border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* MRP */}
 
-                    {/* BATCH */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={item.mrp}
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'mrp',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-24"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="text"
-                        value={item.batch_number}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'batch_number',
-                            e.target.value
-                          )
-                        }
-                        className="w-28 border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* BATCH */}
 
-                    {/* EXPIRY */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={
+                            item.batch_number
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'batch_number',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1 w-28"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3">
-                      <input
-                        type="date"
-                        value={item.expiry_date}
-                        onChange={(e) =>
-                          updateItem(
-                            index,
-                            'expiry_date',
-                            e.target.value
-                          )
-                        }
-                        className="border rounded-lg px-3 py-2"
-                      />
-                    </td>
+                      {/* EXPIRY */}
 
-                    {/* TOTAL */}
+                      <td className="px-2 py-2">
+                        <input
+                          type="date"
+                          value={
+                            item.expiry_date
+                          }
+                          onChange={(e) =>
+                            updateItem(
+                              index,
+                              'expiry_date',
+                              e.target.value
+                            )
+                          }
+                          className="border rounded px-2 py-1"
+                        />
+                      </td>
 
-                    <td className="px-3 py-3 font-semibold text-green-700">
-                      ₹{Number(item.total_amount).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
+                      {/* TOTAL */}
+
+                      <td className="px-2 py-2 font-semibold">
+                        ₹
+                        {Number(
+                          item.total_amount
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* MOBILE CARDS */}
-
-          <div className="lg:hidden space-y-4">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="border border-slate-200 rounded-2xl p-4 shadow-sm bg-white"
-              >
-                <div className="space-y-3">
-
-                  <select
-                    value={item.product_id}
-                    className="w-full border rounded-xl px-4 py-3"
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      const product = products.find(
-                        (p) => p.id === value
-                      );
-
-                      const updated = [...items];
-
-                      updated[index] = {
-                        ...updated[index],
-                        product_id: value,
-                        product_name:
-                          product?.name || '',
-                        gst_percent: Number(
-                          product?.gst || 0
-                        ),
-                        mrp: Number(
-                          product?.unit_price || 0
-                        ),
-                      };
-
-                      setItems(updated);
-                    }}
-                  >
-                    <option value="">
-                      Select Medicine
-                    </option>
-
-                    {products.map((product) => (
-                      <option
-                        key={product.id}
-                        value={product.id}
-                      >
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="grid grid-cols-2 gap-3">
-
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          'quantity',
-                          e.target.value
-                        )
-                      }
-                      className="border rounded-xl px-4 py-3"
-                    />
-
-                    <input
-                      type="number"
-                      placeholder="Purchase Price"
-                      value={item.purchase_price}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          'purchase_price',
-                          e.target.value
-                        )
-                      }
-                      className="border rounded-xl px-4 py-3"
-                    />
-
-                    <input
-                      type="number"
-                      placeholder="GST %"
-                      value={item.gst_percent}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          'gst_percent',
-                          e.target.value
-                        )
-                      }
-                      className="border rounded-xl px-4 py-3"
-                    />
-
-                    <input
-                      type="number"
-                      placeholder="MRP"
-                      value={item.mrp}
-                      onChange={(e) =>
-                        updateItem(
-                          index,
-                          'mrp',
-                          e.target.value
-                        )
-                      }
-                      className="border rounded-xl px-4 py-3"
-                    />
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Batch Number"
-                    value={item.batch_number}
-                    onChange={(e) =>
-                      updateItem(
-                        index,
-                        'batch_number',
-                        e.target.value
-                      )
-                    }
-                    className="w-full border rounded-xl px-4 py-3"
-                  />
-
-                  <input
-                    type="date"
-                    value={item.expiry_date}
-                    onChange={(e) =>
-                      updateItem(
-                        index,
-                        'expiry_date',
-                        e.target.value
-                      )
-                    }
-                    className="w-full border rounded-xl px-4 py-3"
-                  />
-
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="font-medium text-slate-500">
-                      Total
-                    </span>
-
-                    <span className="text-lg font-bold text-green-700">
-                      ₹{Number(item.total_amount).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* ADD BUTTON */}
-
           <button
             onClick={addItem}
-            className="mt-5 w-full sm:w-auto px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition"
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
           >
             + Add Item
           </button>
@@ -716,12 +615,8 @@ export default function PurchaseOrderContent() {
           {/* NOTES */}
 
           <div className="mt-6">
-            <label className="block text-sm font-medium text-slate-600 mb-2">
-              Notes
-            </label>
-
             <textarea
-              placeholder="Add notes..."
+              placeholder="Notes"
               value={formData.notes}
               onChange={(e) =>
                 setFormData({
@@ -730,31 +625,28 @@ export default function PurchaseOrderContent() {
                 })
               }
               rows={4}
-              className="w-full border border-slate-300 rounded-xl px-4 py-3"
+              className="w-full border rounded-lg px-4 py-3"
             />
           </div>
 
           {/* TOTALS */}
 
-          <div className="mt-6 bg-slate-100 rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-4">
-            <div className="space-y-1">
-              <div className="text-slate-600">
-                Subtotal:
-                <span className="font-semibold ml-2">
-                  ₹{subtotal.toFixed(2)}
-                </span>
+          <div className="mt-6 flex justify-between items-center">
+            <div className="text-xl font-bold">
+              <div>
+                Subtotal: ₹
+                {subtotal.toFixed(2)}
               </div>
 
-              <div className="text-slate-600">
-                GST:
-                <span className="font-semibold ml-2">
-                  ₹{gstAmount.toFixed(2)}
-                </span>
+              <div>
+                GST: ₹
+                {gstAmount.toFixed(2)}
               </div>
             </div>
 
-            <div className="text-2xl font-bold text-green-700">
-              Total: ₹{grandTotal.toFixed(2)}
+            <div className="text-2xl font-bold">
+              Total: ₹
+              {grandTotal.toFixed(2)}
             </div>
           </div>
 
@@ -763,7 +655,7 @@ export default function PurchaseOrderContent() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="mt-6 w-full sm:w-auto px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition"
+            className="mt-6 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
             {loading
               ? 'Saving...'
@@ -772,6 +664,5 @@ export default function PurchaseOrderContent() {
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
