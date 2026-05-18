@@ -353,41 +353,65 @@ export default function SuppliersPage() {
     });
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Header />
+return (
+  <div className="min-h-screen bg-slate-50">
+    <Header />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+
+      {/* PAGE HEADER */}
+
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800">
             Supplier Management
           </h1>
 
-          <p className="text-gray-600 mt-2">
-            Manage suppliers and purchase history
+          <p className="text-slate-500 mt-2 text-sm sm:text-base">
+            Manage suppliers, purchase orders and invoices
           </p>
         </div>
 
-        {/* ADD BUTTON */}
         {!showForm && !selectedSupplier && (
           <button
             onClick={() => setShowForm(true)}
-            className="mb-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold shadow-sm transition"
           >
             + Add Supplier
           </button>
         )}
+      </div>
 
-        {/* FORM */}
-        {showForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingId ? 'Edit Supplier' : 'Add Supplier'}
-            </h2>
+      {/* FORM */}
 
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      {showForm && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-8">
+
+          <div className="flex items-center justify-between mb-6">
+
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">
+                {editingId
+                  ? 'Edit Supplier'
+                  : 'Add Supplier'}
+              </h2>
+
+              <p className="text-slate-500 mt-1">
+                Supplier master information
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-5">
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Supplier Name
+                </label>
+
                 <input
                   type="text"
                   placeholder="Supplier Name"
@@ -395,12 +419,19 @@ export default function SuppliersPage() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      supplier_name: e.target.value,
+                      supplier_name:
+                        e.target.value,
                     })
                   }
                   required
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Contact Person
+                </label>
 
                 <input
                   type="text"
@@ -409,12 +440,19 @@ export default function SuppliersPage() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      contact_person: e.target.value,
+                      contact_person:
+                        e.target.value,
                     })
                   }
                   required
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Email
+                </label>
 
                 <input
                   type="email"
@@ -426,8 +464,14 @@ export default function SuppliersPage() {
                       email: e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Phone
+                </label>
 
                 <input
                   type="text"
@@ -439,8 +483,14 @@ export default function SuppliersPage() {
                       phone: e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  GST Number
+                </label>
 
                 <input
                   type="text"
@@ -449,24 +499,40 @@ export default function SuppliersPage() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      gst_number: e.target.value,
+                      gst_number:
+                        e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Drug License Number
+                </label>
 
                 <input
                   type="text"
                   placeholder="Drug License Number"
-                  value={formData.drug_license_number}
+                  value={
+                    formData.drug_license_number
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      drug_license_number: e.target.value,
+                      drug_license_number:
+                        e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  City
+                </label>
 
                 <input
                   type="text"
@@ -478,8 +544,14 @@ export default function SuppliersPage() {
                       city: e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  State
+                </label>
 
                 <input
                   type="text"
@@ -491,8 +563,14 @@ export default function SuppliersPage() {
                       state: e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-2">
+                  Pincode
+                </label>
 
                 <input
                   type="text"
@@ -501,16 +579,24 @@ export default function SuppliersPage() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      pincode: e.target.value,
+                      pincode:
+                        e.target.value,
                     })
                   }
-                  className="border rounded-lg px-4 py-2"
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+            </div>
+
+            <div className="mb-6">
+
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                Address
+              </label>
 
               <textarea
                 placeholder="Address"
-                rows={3}
+                rows={4}
                 value={formData.address}
                 onChange={(e) =>
                   setFormData({
@@ -518,349 +604,506 @@ export default function SuppliersPage() {
                     address: e.target.value,
                   })
                 }
-                className="w-full border rounded-lg px-4 py-2 mb-4"
+                className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
               />
+            </div>
 
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  {editingId
-                    ? 'Update Supplier'
-                    : 'Create Supplier'}
-                </button>
+            <div className="flex flex-col sm:flex-row gap-3">
 
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold transition"
+              >
+                {editingId
+                  ? 'Update Supplier'
+                  : 'Create Supplier'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="w-full sm:w-auto px-6 py-3 bg-slate-500 hover:bg-slate-600 text-white rounded-2xl font-semibold transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* SUPPLIER LIST */}
+
+      {!selectedSupplier && (
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* LEFT PANEL */}
+
+          <div className="lg:col-span-1">
+
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4">
+
+              <div className="relative mb-4">
+
+                <input
+                  type="text"
+                  placeholder="Search supplier..."
+                  value={searchQuery}
+                  onChange={(e) =>
+                    setSearchQuery(
+                      e.target.value
+                    )
+                  }
+                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
-            </form>
-          </div>
-        )}
 
-        {/* LIST */}
-        {!selectedSupplier && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div>
-              <input
-                type="text"
-                placeholder="Search supplier..."
-                value={searchQuery}
-                onChange={(e) =>
-                  setSearchQuery(e.target.value)
-                }
-                className="w-full border rounded-lg px-4 py-3 mb-4"
-              />
+              <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
 
-              <div className="bg-white rounded-lg shadow border max-h-[650px] overflow-y-auto">
                 {loading ? (
-                  <div className="p-6 text-center">
-                    Loading...
+
+                  <div className="text-center py-10 text-slate-500">
+                    Loading suppliers...
                   </div>
-                ) : filteredSuppliers.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
+
+                ) : filteredSuppliers.length ===
+                  0 ? (
+
+                  <div className="text-center py-10 text-slate-500">
                     No suppliers found
                   </div>
+
                 ) : (
-                  <ul className="divide-y">
-                    {filteredSuppliers.map((supplier) => (
-                      <li key={supplier.id}>
-                        <button
-                          onClick={() =>
-                            handleViewHistory(supplier)
-                          }
-                          className="w-full text-left p-4 hover:bg-blue-50"
-                        >
-                          <h3 className="font-semibold text-gray-900">
-                            {supplier.supplier_name}
-                          </h3>
 
-                          <p className="text-sm text-gray-600">
-                            {supplier.contact_person}
-                          </p>
+                  filteredSuppliers.map(
+                    (supplier) => (
 
-                          <p className="text-sm text-gray-500">
-                            {supplier.phone}
-                          </p>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                      <button
+                        key={supplier.id}
+                        onClick={() =>
+                          handleViewHistory(
+                            supplier
+                          )
+                        }
+                        className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition"
+                      >
+
+                        <div className="flex items-start justify-between gap-3">
+
+                          <div>
+
+                            <h3 className="font-bold text-slate-800">
+                              {
+                                supplier.supplier_name
+                              }
+                            </h3>
+
+                            <p className="text-sm text-slate-600 mt-1">
+                              {
+                                supplier.contact_person
+                              }
+                            </p>
+
+                            <p className="text-sm text-slate-500">
+                              {supplier.phone}
+                            </p>
+                          </div>
+
+                          <div className="text-blue-600 text-sm font-semibold">
+                            View
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  )
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="lg:col-span-2 bg-white rounded-lg shadow p-10 flex items-center justify-center text-gray-500">
-              Select supplier to view history
+          {/* RIGHT EMPTY STATE */}
+
+          <div className="lg:col-span-2">
+
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm h-full min-h-[400px] flex flex-col items-center justify-center text-center p-10">
+
+              <div className="text-6xl mb-5">
+                📦
+              </div>
+
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">
+                Select Supplier
+              </h3>
+
+              <p className="text-slate-500 max-w-md">
+                Select a supplier from the left panel
+                to view purchase orders, invoices
+                and supplier details.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* DETAILS */}
-        {selectedSupplier && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* LEFT PANEL */}
-            <div>
-              <button
-                onClick={closeHistory}
-                className="w-full mb-4 px-4 py-2 bg-gray-500 text-white rounded-lg"
-              >
-                ← Back
-              </button>
+      {/* SUPPLIER DETAILS */}
 
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-bold mb-4">
-                  Supplier Info
-                </h2>
+      {selectedSupplier && (
 
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Supplier Name
-                    </p>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-                    <p className="font-semibold">
-                      {selectedSupplier.supplier_name}
-                    </p>
-                  </div>
+          {/* LEFT SIDEBAR */}
 
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Contact Person
-                    </p>
+          <div className="space-y-4">
 
-                    <p className="font-semibold">
-                      {selectedSupplier.contact_person}
-                    </p>
-                  </div>
+            <button
+              onClick={closeHistory}
+              className="w-full px-5 py-3 bg-slate-500 hover:bg-slate-600 text-white rounded-2xl font-semibold transition"
+            >
+              ← Back
+            </button>
 
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Phone
-                    </p>
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
 
-                    <p className="font-semibold">
-                      {selectedSupplier.phone}
-                    </p>
-                  </div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-5">
+                Supplier Info
+              </h2>
+
+              <div className="space-y-4">
+
+                <div>
+                  <p className="text-sm text-slate-500">
+                    Supplier Name
+                  </p>
+
+                  <p className="font-bold text-slate-800 mt-1">
+                    {
+                      selectedSupplier.supplier_name
+                    }
+                  </p>
                 </div>
 
-                <div className="mt-6 space-y-2">
-                  <Link
-                    href={`/pharmacy/purchase-orders/create?supplier_id=${selectedSupplier.id}`}
-                    className="block text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    📦 Create Purchase Order
-                  </Link>
+                <div>
+                  <p className="text-sm text-slate-500">
+                    Contact Person
+                  </p>
 
-                  <button
-                    onClick={() =>
-                      handleEdit(selectedSupplier)
+                  <p className="font-semibold text-slate-700 mt-1">
+                    {
+                      selectedSupplier.contact_person
                     }
-                    className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                  >
-                    ✏️ Edit Supplier
-                  </button>
+                  </p>
+                </div>
 
-                  <button
-                    onClick={() =>
-                      handleDelete(selectedSupplier.id)
-                    }
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                  >
-                    🗑️ Delete Supplier
-                  </button>
+                <div>
+                  <p className="text-sm text-slate-500">
+                    Phone
+                  </p>
+
+                  <p className="font-semibold text-slate-700 mt-1">
+                    {selectedSupplier.phone}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* RIGHT PANEL */}
-            <div className="lg:col-span-2 space-y-6">
-              {historyLoading ? (
-                <div className="bg-white rounded-lg shadow p-8 text-center">
-                  Loading history...
-                </div>
-              ) : supplierHistory ? (
-                <>
-                  {/* PURCHASE ORDERS */}
-                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                    <h3 className="text-xl font-bold mb-4">
+              <div className="mt-6 space-y-3">
+
+                <Link
+                  href={`/pharmacy/purchase-orders/create?supplier_id=${selectedSupplier.id}`}
+                  className="block text-center px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold transition"
+                >
+                  📦 Create Purchase Order
+                </Link>
+
+                <button
+                  onClick={() =>
+                    handleEdit(
+                      selectedSupplier
+                    )
+                  }
+                  className="w-full px-5 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-semibold transition"
+                >
+                  ✏️ Edit Supplier
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleDelete(
+                      selectedSupplier.id
+                    )
+                  }
+                  className="w-full px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-semibold transition"
+                >
+                  🗑️ Delete Supplier
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT CONTENT */}
+
+          <div className="xl:col-span-2 space-y-6">
+
+            {historyLoading ? (
+
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-10 text-center text-slate-500">
+                Loading supplier history...
+              </div>
+
+            ) : supplierHistory ? (
+
+              <>
+                {/* PURCHASE ORDERS */}
+
+                <div className="bg-white rounded-3xl border border-green-200 shadow-sm p-4 sm:p-6">
+
+                  <div className="flex items-center justify-between mb-5">
+
+                    <h3 className="text-2xl font-bold text-slate-800">
                       Purchase Orders
                     </h3>
 
-                    {supplierHistory.purchaseOrders.length ===
-                    0 ? (
-                      <p>No purchase orders found</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {supplierHistory.purchaseOrders.map(
-                          (po) => (
-                            <div
-                              key={po.id}
-                              className="border rounded-lg p-4 bg-green-50"
-                            >
-                              <div className="flex justify-between">
-                                <div>
-                                  <p className="font-semibold">
-                                    {po.invoice_number}
-                                  </p>
+                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                      {
+                        supplierHistory
+                          .purchaseOrders
+                          .length
+                      }{" "}
+                      Orders
+                    </span>
+                  </div>
 
-                                  <p className="text-sm text-gray-600">
-                                    ₹
-                                    {Number(
-                                      po.total_amount
-                                    ).toFixed(2)}
-                                  </p>
+                  {supplierHistory.purchaseOrders
+                    .length === 0 ? (
 
-                                  <p className="text-sm text-gray-500">
-                                    {new Date(
-                                      po.purchase_date
-                                    ).toLocaleDateString()}
-                                  </p>
+                    <p className="text-slate-500">
+                      No purchase orders found
+                    </p>
+
+                  ) : (
+
+                    <div className="space-y-4">
+
+                      {supplierHistory.purchaseOrders.map(
+                        (po) => (
+
+                          <div
+                            key={po.id}
+                            className="border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition"
+                          >
+
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                              <div>
+
+                                <p className="font-bold text-slate-800">
+                                  {
+                                    po.invoice_number
+                                  }
+                                </p>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                  {new Date(
+                                    po.purchase_date
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-4">
+
+                                <div className="font-bold text-green-700">
+                                  ₹
+                                  {Number(
+                                    po.total_amount
+                                  ).toFixed(2)}
                                 </div>
 
-                                <span className="text-sm font-semibold">
+                                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
                                   {po.status}
                                 </span>
                               </div>
                             </div>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  {/* PURCHASE ITEMS */}
-                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500 overflow-x-auto">
-                    <h3 className="text-xl font-bold mb-4">
-                      Purchase Items
-                    </h3>
+                {/* PURCHASE ITEMS */}
 
-                    {supplierHistory.purchaseItems.length ===
-                    0 ? (
-                      <p>No purchase items found</p>
-                    ) : (
-                      <table className="min-w-full border">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="px-4 py-2 text-left">
-                              Medicine
-                            </th>
+                <div className="bg-white rounded-3xl border border-blue-200 shadow-sm p-4 sm:p-6">
 
-                            <th className="px-4 py-2 text-left">
-                              Batch
-                            </th>
+                  <h3 className="text-2xl font-bold text-slate-800 mb-5">
+                    Purchase Items
+                  </h3>
 
-                            <th className="px-4 py-2 text-left">
-                              Qty
-                            </th>
+                  {supplierHistory.purchaseItems
+                    .length === 0 ? (
 
-                            <th className="px-4 py-2 text-left">
-                              Purchase Price
-                            </th>
+                    <p className="text-slate-500">
+                      No purchase items found
+                    </p>
 
-                            <th className="px-4 py-2 text-left">
-                              MRP
-                            </th>
-                          </tr>
-                        </thead>
+                  ) : (
 
-                        <tbody>
-                          {supplierHistory.purchaseItems.map(
-                            (item) => (
-                              <tr
-                                key={item.id}
-                                className="border-t"
-                              >
-                                <td className="px-4 py-2">
-                                  {item.product_name}
-                                </td>
+                    <div className="space-y-4">
 
-                                <td className="px-4 py-2">
-                                  {item.batch_number}
-                                </td>
+                      {supplierHistory.purchaseItems.map(
+                        (item) => (
 
-                                <td className="px-4 py-2">
-                                  {item.quantity}
-                                </td>
+                          <div
+                            key={item.id}
+                            className="border border-slate-200 rounded-2xl p-4"
+                          >
 
-                                <td className="px-4 py-2">
-                                  ₹
-                                  {Number(
-                                    item.purchase_price
-                                  ).toFixed(2)}
-                                </td>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-                                <td className="px-4 py-2">
-                                  ₹
-                                  {Number(
-                                    item.mrp
-                                  ).toFixed(2)}
-                                </td>
-                              </tr>
-                            )
-                          )}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
+                              <div>
 
-                  {/* INVOICES */}
-                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-                    <h3 className="text-xl font-bold mb-4">
-                      Supplier Invoices
-                    </h3>
+                                <h4 className="font-bold text-slate-800">
+                                  {
+                                    item.product_name
+                                  }
+                                </h4>
 
-                    {supplierHistory.invoices.length ===
-                    0 ? (
-                      <p>No invoices found</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {supplierHistory.invoices.map(
-                          (invoice) => (
-                            <div
-                              key={invoice.id}
-                              className="border rounded-lg p-4 bg-purple-50"
-                            >
-                              <div className="flex justify-between items-center">
+                                <p className="text-sm text-slate-500 mt-1">
+                                  Batch:{" "}
+                                  {
+                                    item.batch_number
+                                  }
+                                </p>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:flex gap-4 text-sm">
+
                                 <div>
-                                  <p className="font-semibold">
-                                    {
-                                      invoice.invoice_number
-                                    }
+                                  <p className="text-slate-500">
+                                    Qty
                                   </p>
 
-                                  <p className="text-sm text-gray-600">
+                                  <p className="font-semibold">
+                                    {
+                                      item.quantity
+                                    }
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <p className="text-slate-500">
+                                    Purchase
+                                  </p>
+
+                                  <p className="font-semibold">
                                     ₹
                                     {Number(
-                                      invoice.total_amount
+                                      item.purchase_price
                                     ).toFixed(2)}
                                   </p>
                                 </div>
 
-                                <span className="text-sm font-semibold">
+                                <div>
+                                  <p className="text-slate-500">
+                                    MRP
+                                  </p>
+
+                                  <p className="font-semibold text-green-700">
+                                    ₹
+                                    {Number(
+                                      item.mrp
+                                    ).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* INVOICES */}
+
+                <div className="bg-white rounded-3xl border border-purple-200 shadow-sm p-4 sm:p-6">
+
+                  <div className="flex items-center justify-between mb-5">
+
+                    <h3 className="text-2xl font-bold text-slate-800">
+                      Supplier Invoices
+                    </h3>
+
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                      {
+                        supplierHistory.invoices
+                          .length
+                      }{" "}
+                      Invoices
+                    </span>
+                  </div>
+
+                  {supplierHistory.invoices
+                    .length === 0 ? (
+
+                    <p className="text-slate-500">
+                      No invoices found
+                    </p>
+
+                  ) : (
+
+                    <div className="space-y-4">
+
+                      {supplierHistory.invoices.map(
+                        (invoice) => (
+
+                          <div
+                            key={invoice.id}
+                            className="border border-slate-200 rounded-2xl p-4"
+                          >
+
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+                              <div>
+
+                                <h4 className="font-bold text-slate-800">
+                                  {
+                                    invoice.invoice_number
+                                  }
+                                </h4>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                  Payment Status
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-4">
+
+                                <div className="font-bold text-purple-700">
+                                  ₹
+                                  {Number(
+                                    invoice.total_amount
+                                  ).toFixed(2)}
+                                </div>
+
+                                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-semibold">
                                   {
                                     invoice.payment_status
                                   }
                                 </span>
                               </div>
                             </div>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : null}
-            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+
+            ) : null}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 }
