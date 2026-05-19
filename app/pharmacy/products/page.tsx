@@ -35,7 +35,7 @@ interface Medicine {
 
   reorder_level: number;
 
-  supplier_id?: string;
+  // supplier_id?: string;
 
   is_active: boolean;
 }
@@ -61,7 +61,7 @@ const initialForm: Medicine = {
 
   reorder_level: 10,
 
-  supplier_id: '',
+  // supplier_id: '',
 
   is_active: true,
 };

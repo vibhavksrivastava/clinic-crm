@@ -20,8 +20,13 @@ interface Product {
   unit_price?: number;
 }
 
+
 export default function PurchaseOrderContent() {
   const router = useRouter();
+
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
 
   const searchParams = useSearchParams();
 
@@ -73,9 +78,28 @@ export default function PurchaseOrderContent() {
   };
 
   useEffect(() => {
+    fetchSuppliers();
     fetchSupplier();
     fetchProducts();
   }, []);
+
+useEffect(() => {
+  if (supplierId) {
+    setSelectedSupplierId(supplierId);
+  }
+}, [supplierId]);
+
+const fetchSuppliers = async () => {
+  try {
+    const res = await fetch('/api/pharmacy/suppliers');
+
+    const data = await res.json();
+
+    setSuppliers(data || []);
+  } catch (error) {
+    console.error('Failed to fetch suppliers', error);
+  }
+};
 
   const fetchSupplier = async () => {
     try {
@@ -313,14 +337,35 @@ export default function PurchaseOrderContent() {
           <h1 className="text-3xl font-bold mb-2">
             Create Purchase Order
           </h1>
+<div className="mb-6">
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Supplier
+  </label>
 
-          <p className="text-gray-600 mb-6">
-            Supplier:{' '}
-            <span className="font-semibold">
-              {supplier?.supplier_name ||
-                'Loading...'}
-            </span>
-          </p>
+  <select
+    value={selectedSupplierId}
+    onChange={(e) => {
+      const supplierId = e.target.value;
+
+      setSelectedSupplierId(supplierId);
+
+      if (supplierId) {
+        router.push(
+          `/pharmacy/purchase-orders/create?supplier_id=${supplierId}`
+        );
+      }
+    }}
+    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+  >
+    <option value="">Select Supplier</option>
+
+    {suppliers.map((supplier) => (
+      <option key={supplier.id} value={supplier.id}>
+        {supplier.supplier_name}
+      </option>
+    ))}
+  </select>
+</div>
 
           {/* FORM SECTION */}
 

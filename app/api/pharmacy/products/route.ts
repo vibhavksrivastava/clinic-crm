@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       unit_price,
       cost_price,
       reorder_level,
-      supplier_id,
+      // supplier_id,
       is_active,
     } = body;
 
@@ -126,8 +126,8 @@ export async function POST(request: NextRequest) {
         reorder_level:
           reorder_level || 10,
 
-        supplier_id:
-          supplier_id || null,
+        // supplier_id:
+        //   supplier_id || null,
 
         is_active:
           is_active ?? true,
@@ -180,7 +180,7 @@ export async function PUT(request: NextRequest) {
       unit_price,
       cost_price,
       reorder_level,
-      supplier_id,
+      // supplier_id,
       is_active,
     } = body;
 
@@ -216,10 +216,11 @@ export async function PUT(request: NextRequest) {
 
         cost_price,
 
-        reorder_level,
+        reorder_level:
+          reorder_level || 10,
 
-        supplier_id,
-
+        // supplier_id,
+        //   supplier_id || null,
         is_active,
 
         updated_at: new Date(),

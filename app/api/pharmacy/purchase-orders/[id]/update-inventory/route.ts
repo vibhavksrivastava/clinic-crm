@@ -7,116 +7,153 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-
-    const { id } = await params;
-
     const user = await getSessionFromRequest(request);
+    const {id} = await params;
+    console.log('HIT PO ID:', id);
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const purchaseOrderId = (await params).id;
+    // ✅ FIXED PARAM ACCESS
+    const poId = id;
 
-    // 1. Get PO + Items
-    const { data: po } = await supabase
+    console.log('DEBUG PO ID:', poId);
+
+    if (!poId) {
+      return NextResponse.json(
+        { error: 'Missing purchase order id' },
+        { status: 400 }
+      );
+    }
+
+    // FETCH PO
+    const { data: po, error: poError } = await supabase
       .from('pharmacy_purchase_orders')
       .select('*')
-      .eq('id', purchaseOrderId)
+      .eq('id', poId)
       .single();
 
-    const { data: items } = await supabase
-      .from('pharmacy_purchase_order_items')
-      .select('*')
-      .eq('purchase_order_id', purchaseOrderId);
-
-    if (!po || !items) {
+    if (poError || !po) {
       return NextResponse.json(
         { error: 'Purchase order not found' },
         { status: 404 }
       );
     }
 
-    // 2. Prevent double inventory posting
-    if (po.inventory_posted) {
+    if (po.inventory_updated) {
       return NextResponse.json(
         { error: 'Inventory already updated' },
-        { status: 409 }
+        { status: 400 }
       );
     }
 
-    // 3. Loop items → update stock
+    // FETCH ITEMS
+    const { data: items, error: itemError } = await supabase
+      .from('pharmacy_purchase_items')
+      .select('*')
+      .eq('purchase_order_id', poId);
+
+    if (itemError || !items?.length) {
+      return NextResponse.json(
+        { error: 'No items found' },
+        { status: 400 }
+      );
+    }
+
+    // PROCESS ITEMS
     for (const item of items) {
-      const qty = Number(item.received_quantity || 0);
-
-      if (qty <= 0) continue;
-
-      // check if batch exists
-      const { data: existing } = await supabase
+      const { data: inventory, error: invError } = await supabase
         .from('pharmacy_inventory')
+        .insert({
+          organization_id: po.organization_id,
+          branch_id: po.branch_id,
+
+          product_id: item.product_id,
+          batch_number: item.batch_number || null,
+          expiry_date: item.expiry_date || null,
+
+          purchase_price: item.purchase_price || 0,
+          selling_price: item.mrp || 0,
+          mrp: item.mrp || 0,
+
+          stock_quantity: item.quantity || 0,
+          minimum_stock: 0,
+        })
+        .select()
+        .single();
+
+      if (invError) {
+        console.error(invError);
+
+        return NextResponse.json(
+          {
+            error: 'Inventory insert failed',
+            details: invError.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      // STOCK UPDATE
+      const { data: stock } = await supabase
+        .from('pharmacy_stock')
         .select('*')
         .eq('product_id', item.product_id)
-        .eq('batch_number', item.batch_number)
-        .eq('organization_id', user.organizationId)
-        .maybeSingle();
+        .single();
 
-      if (existing) {
-        // update stock
+      if (stock) {
         await supabase
-          .from('pharmacy_inventory')
+          .from('pharmacy_stock')
           .update({
-            quantity: existing.quantity + qty,
-            updated_at: new Date().toISOString(),
+            quantity:
+              Number(stock.quantity || 0) +
+              Number(item.quantity || 0),
           })
-          .eq('id', existing.id);
+          .eq('id', stock.id);
       } else {
-        // insert new batch
-        await supabase.from('pharmacy_inventory').insert({
+        await supabase.from('pharmacy_stock').insert({
+          organization_id: po.organization_id,
+          branch_id: po.branch_id,
           product_id: item.product_id,
-          organization_id: user.organizationId,
-          branch_id: user.branchId,
-          batch_number: item.batch_number,
-          expiry_date: item.expiry_date,
-          purchase_price: item.purchase_price,
-          selling_price: item.mrp,
-          quantity: qty,
-          minimum_stock: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          quantity: item.quantity,
         });
       }
 
-      // OPTIONAL: stock movement log
-      await supabase.from('pharmacy_stock_movement').insert({
+      // STOCK MOVEMENT
+      await supabase.from('pharmacy_stock_movements').insert({
+        inventory_id: inventory.id,
         product_id: item.product_id,
-        type: 'IN',
-        quantity: qty,
-        reference_id: purchaseOrderId,
-        reference_type: 'PURCHASE_ORDER',
-        organization_id: user.organizationId,
-        branch_id: user.branchId,
-        created_at: new Date().toISOString(),
+        organization_id: po.organization_id,
+        branch_id: po.branch_id,
+        movement_type: 'purchase',
+        quantity: item.quantity,
+        reference_id: po.id,
       });
     }
 
-    // 4. Mark PO as inventory posted
+    // UPDATE PO
     await supabase
       .from('pharmacy_purchase_orders')
       .update({
-        inventory_posted: true,
-        inventory_posted_at: new Date().toISOString(),
+        inventory_updated: true,
+        inventory_updated_at: new Date().toISOString(),
+        inventory_updated_by: user.userId,
+        status: 'received',
       })
-      .eq('id', purchaseOrderId);
+      .eq('id', poId);
 
     return NextResponse.json({
       success: true,
-      id: purchaseOrderId
+      message: 'Inventory updated successfully',
     });
   } catch (error: any) {
-    console.error('UPDATE INVENTORY ERROR:', error);
-
+    console.error(error);
     return NextResponse.json(
-      { error: error.message || 'Inventory update failed' },
+      { error: error.message || 'Server error' },
       { status: 500 }
     );
   }

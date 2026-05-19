@@ -1,11 +1,14 @@
 import { supabase } from '@/lib/db/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/auth';
+
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+
     const { id } = await context.params;
 
     console.log('🔥 API HIT - PO ID:', id);
