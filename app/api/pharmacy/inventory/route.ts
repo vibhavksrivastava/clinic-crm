@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
         pharmacy_products (
           name,
           sku,
-          category
+          category,
+          gst
         )
       `)
       .eq('organization_id', userContext.organizationId)
