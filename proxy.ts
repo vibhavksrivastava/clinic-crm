@@ -11,7 +11,7 @@ const publicRoutes = ['/', '/api/auth', '/login', '/signup', '/forgot-password']
  * Main middleware function exported for Next.js
  * Simplified to work with Edge Runtime (no Node.js modules)
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Skip authentication for public routes

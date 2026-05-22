@@ -2,7 +2,24 @@
 
 import Link from 'next/link';
 import Header from '@/components/Header';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Building2,
+  Search,
+  Phone,
+  Mail,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  ArrowLeft,
+  FileText,
+  Package,
+  Receipt,
+  Loader2,
+  ShieldCheck,
+  CreditCard,
+} from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -57,20 +74,24 @@ export default function SuppliersPage() {
 
   const [showForm, setShowForm] = useState(false);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
 
   const [selectedSupplier, setSelectedSupplier] =
     useState<Supplier | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] =
+    useState('');
 
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] =
+    useState(false);
 
-  const [supplierHistory, setSupplierHistory] = useState<{
-    purchaseOrders: PurchaseOrder[];
-    purchaseItems: PurchaseItem[];
-    invoices: SupplierInvoice[];
-  } | null>(null);
+  const [supplierHistory, setSupplierHistory] =
+    useState<{
+      purchaseOrders: PurchaseOrder[];
+      purchaseItems: PurchaseItem[];
+      invoices: SupplierInvoice[];
+    } | null>(null);
 
   const [formData, setFormData] = useState({
     supplier_name: '',
@@ -93,11 +114,12 @@ export default function SuppliersPage() {
 
     return {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token && {
+        Authorization: `Bearer ${token}`,
+      }),
     };
   };
 
-  // SAFE JSON PARSER
   const safeJson = async (response: Response) => {
     const text = await response.text();
 
@@ -109,93 +131,104 @@ export default function SuppliersPage() {
     }
   };
 
-  // FETCH SUPPLIERS
+  // ================= FETCH SUPPLIERS =================
+
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/pharmacy/suppliers', {
-        headers: getAuthHeaders(),
-      });
-
-      if (response.status === 401) {
-        alert('❌ Unauthorized. Please login.');
-        return;
-      }
+      const response = await fetch(
+        '/api/pharmacy/suppliers',
+        {
+          headers: getAuthHeaders(),
+        }
+      );
 
       const data = await safeJson(response);
 
       setSuppliers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching suppliers:', error);
+      console.error(
+        'Error fetching suppliers:',
+        error
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // FETCH HISTORY
-  const fetchSupplierHistory = async (supplierId: string) => {
+  // ================= FETCH HISTORY =================
+
+  const fetchSupplierHistory = async (
+    supplierId: string
+  ) => {
     try {
       setHistoryLoading(true);
 
-      const [ordersRes, itemsRes, invoicesRes] = await Promise.all([
-        fetch(
-          `/api/pharmacy/purchase-orders?supplier_id=${supplierId}`,
-          {
-            headers: getAuthHeaders(),
-          }
-        ),
+      const [ordersRes, itemsRes] =
+        await Promise.all([
+          fetch(
+            `/api/pharmacy/purchase-orders?supplier_id=${supplierId}`,
+            {
+              headers: getAuthHeaders(),
+            }
+          ),
 
-        fetch(
-          `/api/pharmacy/purchase-items?supplier_id=${supplierId}`,
-          {
-            headers: getAuthHeaders(),
-          }
-        ),
+          fetch(
+            `/api/pharmacy/purchase-items?supplier_id=${supplierId}`,
+            {
+              headers: getAuthHeaders(),
+            }
+          ),
+        ]);
 
-        fetch(
-          `/api/pharmacy/purchase-invoices?supplier_id=${supplierId}`,
-          {
-            headers: getAuthHeaders(),
-          }
-        ),
-      ]);
+      const purchaseOrders = await safeJson(
+        ordersRes
+      );
 
-      const purchaseOrders = await safeJson(ordersRes);
+      const purchaseItems = await safeJson(
+        itemsRes
+      );
 
-      const purchaseItems = await safeJson(itemsRes);
+      const receivedOrders = Array.isArray(
+        purchaseOrders
+      )
+        ? purchaseOrders.filter(
+            (po: any) =>
+              po.status === 'Received' ||
+              po.status ===
+                'partial_received'
+          )
+        : [];
 
-      
-      const invoices = Array.isArray(purchaseOrders)?purchaseOrders.filter(
-      (po: any) =>
-      po.status === 'Received' ||
-      po.status === 'partial_received'
-      ): [];
-
-      const receivedOrders = invoices;
-      const receivedOrderIds = receivedOrders.map(
-      (po: any) => po.id
-    );
-    
+      const receivedOrderIds =
+        receivedOrders.map((po: any) => po.id);
 
       setSupplierHistory({
-        purchaseOrders: Array.isArray(purchaseOrders)
+        purchaseOrders: Array.isArray(
+          purchaseOrders
+        )
           ? purchaseOrders
           : [],
 
-        purchaseItems: Array.isArray(purchaseItems)
-        ? purchaseItems.filter((item: any) =>
-        receivedOrderIds.includes(
-          item.purchase_order_id
+        purchaseItems: Array.isArray(
+          purchaseItems
         )
-      )
-    : [],
+          ? purchaseItems.filter(
+              (item: any) =>
+                receivedOrderIds.includes(
+                  item.purchase_order_id
+                )
+            )
+          : [],
 
-    invoices: receivedOrders,
-
+        invoices: receivedOrders,
       });
     } catch (error) {
-      console.error('Error fetching supplier history:', error);
+      console.error(
+        'Error fetching supplier history:',
+        error
+      );
     } finally {
       setHistoryLoading(false);
     }
@@ -205,26 +238,54 @@ export default function SuppliersPage() {
     fetchSuppliers();
   }, []);
 
-  // FILTER SUPPLIERS
-  const filteredSuppliers = suppliers.filter((supplier) => {
-    if (!searchQuery.trim()) return true;
+  // ================= FILTER =================
+
+  const filteredSuppliers = useMemo(() => {
+    if (!searchQuery.trim()) return suppliers;
 
     const query = searchQuery.toLowerCase();
 
-    return (
-      supplier.supplier_name.toLowerCase().includes(query) ||
-      supplier.contact_person.toLowerCase().includes(query) ||
-      supplier.phone.toLowerCase().includes(query) ||
-      supplier.id.toLowerCase().includes(query)
-    );
-  });
+    return suppliers.filter((supplier) => {
+      return (
+        supplier.supplier_name
+          .toLowerCase()
+          .includes(query) ||
+        supplier.contact_person
+          .toLowerCase()
+          .includes(query) ||
+        supplier.phone
+          .toLowerCase()
+          .includes(query) ||
+        supplier.city
+          .toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [suppliers, searchQuery]);
 
-  // SAVE SUPPLIER
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ================= STATS =================
+
+  const totalSuppliers = suppliers.length;
+
+  const totalCities = new Set(
+    suppliers.map((s) => s.city)
+  ).size;
+
+  const suppliersWithGST = suppliers.filter(
+    (s) => s.gst_number
+  ).length;
+
+  // ================= SAVE =================
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     try {
-      const method = editingId ? 'PUT' : 'POST';
+      const method = editingId
+        ? 'PUT'
+        : 'POST';
 
       const url = editingId
         ? `/api/pharmacy/suppliers?id=${editingId}`
@@ -240,48 +301,45 @@ export default function SuppliersPage() {
 
       if (response.ok) {
         alert(
-          `✅ Supplier ${
-            editingId ? 'updated' : 'created'
+          `Supplier ${
+            editingId
+              ? 'updated'
+              : 'created'
           } successfully`
         );
 
-        setFormData({
-          supplier_name: '',
-          contact_person: '',
-          email: '',
-          phone: '',
-          gst_number: '',
-          drug_license_number: '',
-          city: '',
-          state: '',
-          pincode: '',
-          address: '',
-        });
-
-        setEditingId(null);
-
-        setShowForm(false);
+        resetForm();
 
         fetchSuppliers();
       } else {
-        alert(`❌ ${data.error || 'Failed to save supplier'}`);
+        alert(
+          data.error ||
+            'Failed to save supplier'
+        );
       }
     } catch (error) {
-      console.error('Error saving supplier:', error);
+      console.error(error);
 
-      alert('❌ Failed to save supplier');
+      alert('Failed to save supplier');
     }
   };
 
-  // EDIT
-  const handleEdit = (supplier: Supplier) => {
+  // ================= EDIT =================
+
+  const handleEdit = (
+    supplier: Supplier
+  ) => {
     setFormData({
-      supplier_name: supplier.supplier_name,
-      contact_person: supplier.contact_person,
+      supplier_name:
+        supplier.supplier_name,
+      contact_person:
+        supplier.contact_person,
       email: supplier.email,
       phone: supplier.phone,
-      gst_number: supplier.gst_number,
-      drug_license_number: supplier.drug_license_number,
+      gst_number:
+        supplier.gst_number,
+      drug_license_number:
+        supplier.drug_license_number,
       city: supplier.city,
       state: supplier.state,
       pincode: supplier.pincode,
@@ -293,9 +351,17 @@ export default function SuppliersPage() {
     setShowForm(true);
   };
 
-  // DELETE
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this supplier?')) return;
+  // ================= DELETE =================
+
+  const handleDelete = async (
+    id: string
+  ) => {
+    if (
+      !window.confirm(
+        'Delete this supplier?'
+      )
+    )
+      return;
 
     try {
       const response = await fetch(
@@ -309,20 +375,26 @@ export default function SuppliersPage() {
       const data = await safeJson(response);
 
       if (response.ok) {
-        alert('✅ Supplier deleted');
+        alert('Supplier deleted');
 
         fetchSuppliers();
 
         closeHistory();
       } else {
-        alert(`❌ ${data.error || 'Delete failed'}`);
+        alert(
+          data.error || 'Delete failed'
+        );
       }
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error(error);
     }
   };
 
-  const handleViewHistory = (supplier: Supplier) => {
+  // ================= HELPERS =================
+
+  const handleViewHistory = (
+    supplier: Supplier
+  ) => {
     setSelectedSupplier(supplier);
 
     fetchSupplierHistory(supplier.id);
@@ -334,7 +406,7 @@ export default function SuppliersPage() {
     setSupplierHistory(null);
   };
 
-  const handleCancel = () => {
+  const resetForm = () => {
     setShowForm(false);
 
     setEditingId(null);
@@ -353,572 +425,665 @@ export default function SuppliersPage() {
     });
   };
 
-return (
-  <div className="min-h-screen bg-slate-50">
-    <Header />
+  const formatCurrency = (
+    amount: number
+  ) => {
+    return `₹${Number(amount || 0).toFixed(
+      2
+    )}`;
+  };
 
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+  const getStatusClass = (
+    status: string
+  ) => {
+    switch (status?.toLowerCase()) {
+      case 'received':
+        return 'bg-emerald-100 text-emerald-700';
 
-      {/* PAGE HEADER */}
+      case 'pending':
+        return 'bg-amber-100 text-amber-700';
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+      case 'partial_received':
+        return 'bg-blue-100 text-blue-700';
 
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-800">
-            Supplier Management
-          </h1>
+      default:
+        return 'bg-slate-100 text-slate-700';
+    }
+  };
 
-          <p className="text-slate-500 mt-2 text-sm sm:text-base">
-            Manage suppliers, purchase orders and invoices
-          </p>
-        </div>
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Header />
 
-        {!showForm && !selectedSupplier && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold shadow-sm transition"
-          >
-            + Add Supplier
-          </button>
-        )}
-      </div>
+      <main className="p-4 md:p-6">
+      
+        {/* ================= HEADER ================= */}
+        
+        {/* HERO */}
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
 
-      {/* FORM */}
-
-      {showForm && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-8">
-
-          <div className="flex items-center justify-between mb-6">
-
+          <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                {editingId
-                  ? 'Edit Supplier'
-                  : 'Add Supplier'}
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md">
+                <Building2 size={16} />
+                Pharmacy Management System
+              </div>
+
+              <h1 className="text-4xl font-bold tracking-tight">
+                Supplier Management
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-base text-blue-100">
+                Manage distributors,
+              invoices, purchase orders
+              and supplier performance.
+              </p>
+            </div>
+
+            
+          {!showForm &&
+            !selectedSupplier && (
+              <button
+                onClick={() =>
+                  setShowForm(true)
+                }
+                className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 font-semibold text-slate-900 transition hover:scale-[1.02]"
+              >
+                <Plus size={18} />
+                Add Supplier
+              </button>
+            )}
+          </div>
+        </div>
+        {/* ================= STATS ================= */}
+
+        {!selectedSupplier && (
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="rounded-2xl bg-blue-100 p-3 text-blue-700">
+                  <Building2 size={22} />
+                </div>
+
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Total
+                </span>
+              </div>
+
+              <h2 className="mt-5 text-3xl font-bold text-slate-900">
+                {totalSuppliers}
               </h2>
 
-              <p className="text-slate-500 mt-1">
-                Supplier master information
+              <p className="mt-1 text-sm text-slate-500">
+                Registered Suppliers
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
+                  <ShieldCheck size={22} />
+                </div>
+
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  GST
+                </span>
+              </div>
+
+              <h2 className="mt-5 text-3xl font-bold text-slate-900">
+                {suppliersWithGST}
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                GST Verified
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="rounded-2xl bg-purple-100 p-3 text-purple-700">
+                  <MapPin size={22} />
+                </div>
+
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Cities
+                </span>
+              </div>
+
+              <h2 className="mt-5 text-3xl font-bold text-slate-900">
+                {totalCities}
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Supplier Locations
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="rounded-2xl bg-white/10 p-3">
+                  <Receipt size={22} />
+                </div>
+
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                  Active
+                </span>
+              </div>
+
+              <h2 className="mt-5 text-3xl font-bold">
+                {
+                  filteredSuppliers.length
+                }
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-300">
+                Search Results
               </p>
             </div>
           </div>
+        )}
 
-          <form onSubmit={handleSubmit}>
+        {/* ================= FORM ================= */}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-5">
-
+        {showForm && (
+          <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Supplier Name
-                </label>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {editingId
+                    ? 'Edit Supplier'
+                    : 'Create Supplier'}
+                </h2>
 
-                <input
-                  type="text"
-                  placeholder="Supplier Name"
-                  value={formData.supplier_name}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      supplier_name:
-                        e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+                <p className="mt-1 text-sm text-slate-500">
+                  Maintain supplier
+                  profile and licensing
+                  details
+                </p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Contact Person
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Contact Person"
-                  value={formData.contact_person}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact_person:
-                        e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Email
-                </label>
-
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      email: e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Phone
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Phone"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      phone: e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  GST Number
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="GST Number"
-                  value={formData.gst_number}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      gst_number:
-                        e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Drug License Number
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Drug License Number"
-                  value={
-                    formData.drug_license_number
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      drug_license_number:
-                        e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  City
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="City"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      city: e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  State
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="State"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      state: e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
-                  Pincode
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Pincode"
-                  value={formData.pincode}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pincode:
-                        e.target.value,
-                    })
-                  }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mb-6">
-
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Address
-              </label>
-
-              <textarea
-                placeholder="Address"
-                rows={4}
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: e.target.value,
-                  })
-                }
-                className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold transition"
-              >
-                {editingId
-                  ? 'Update Supplier'
-                  : 'Create Supplier'}
-              </button>
 
               <button
                 type="button"
-                onClick={handleCancel}
-                className="w-full sm:w-auto px-6 py-3 bg-slate-500 hover:bg-slate-600 text-white rounded-2xl font-semibold transition"
+                onClick={resetForm}
+                className="rounded-2xl border border-slate-300 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-100"
               >
                 Cancel
               </button>
             </div>
-          </form>
-        </div>
-      )}
 
-      {/* SUPPLIER LIST */}
+            <form
+              onSubmit={handleSubmit}
+            >
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  {
+                    label:
+                      'Supplier Name',
+                    key: 'supplier_name',
+                    type: 'text',
+                    required: true,
+                  },
+                  {
+                    label:
+                      'Contact Person',
+                    key: 'contact_person',
+                    type: 'text',
+                    required: true,
+                  },
+                  {
+                    label: 'Email',
+                    key: 'email',
+                    type: 'email',
+                  },
+                  {
+                    label: 'Phone',
+                    key: 'phone',
+                    type: 'text',
+                  },
+                  {
+                    label:
+                      'GST Number',
+                    key: 'gst_number',
+                    type: 'text',
+                  },
+                  {
+                    label:
+                      'Drug License Number',
+                    key:
+                      'drug_license_number',
+                    type: 'text',
+                  },
+                  {
+                    label: 'City',
+                    key: 'city',
+                    type: 'text',
+                  },
+                  {
+                    label: 'State',
+                    key: 'state',
+                    type: 'text',
+                  },
+                  {
+                    label: 'Pincode',
+                    key: 'pincode',
+                    type: 'text',
+                  },
+                ].map((field) => (
+                  <div
+                    key={field.key}
+                  >
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      {field.label}
+                    </label>
 
-      {!selectedSupplier && (
+                    <input
+                      type={field.type}
+                      required={
+                        field.required
+                      }
+                      value={
+                        formData[
+                          field.key as keyof typeof formData
+                        ]
+                      }
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [field.key]:
+                            e.target.value,
+                        })
+                      }
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </div>
+                ))}
+              </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="mt-5">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Address
+                </label>
 
-          {/* LEFT PANEL */}
-
-          <div className="lg:col-span-1">
-
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4">
-
-              <div className="relative mb-4">
-
-                <input
-                  type="text"
-                  placeholder="Search supplier..."
-                  value={searchQuery}
+                <textarea
+                  rows={4}
+                  value={formData.address}
                   onChange={(e) =>
-                    setSearchQuery(
-                      e.target.value
-                    )
+                    setFormData({
+                      ...formData,
+                      address:
+                        e.target.value,
+                    })
                   }
-                  className="w-full border border-slate-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 />
               </div>
 
-              <div className="space-y-3 max-h-[650px] overflow-y-auto pr-1">
-
-                {loading ? (
-
-                  <div className="text-center py-10 text-slate-500">
-                    Loading suppliers...
-                  </div>
-
-                ) : filteredSuppliers.length ===
-                  0 ? (
-
-                  <div className="text-center py-10 text-slate-500">
-                    No suppliers found
-                  </div>
-
-                ) : (
-
-                  filteredSuppliers.map(
-                    (supplier) => (
-
-                      <button
-                        key={supplier.id}
-                        onClick={() =>
-                          handleViewHistory(
-                            supplier
-                          )
-                        }
-                        className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition"
-                      >
-
-                        <div className="flex items-start justify-between gap-3">
-
-                          <div>
-
-                            <h3 className="font-bold text-slate-800">
-                              {
-                                supplier.supplier_name
-                              }
-                            </h3>
-
-                            <p className="text-sm text-slate-600 mt-1">
-                              {
-                                supplier.contact_person
-                              }
-                            </p>
-
-                            <p className="text-sm text-slate-500">
-                              {supplier.phone}
-                            </p>
-                          </div>
-
-                          <div className="text-blue-600 text-sm font-semibold">
-                            View
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT EMPTY STATE */}
-
-          <div className="lg:col-span-2">
-
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm h-full min-h-[400px] flex flex-col items-center justify-center text-center p-10">
-
-              <div className="text-6xl mb-5">
-                📦
-              </div>
-
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">
-                Select Supplier
-              </h3>
-
-              <p className="text-slate-500 max-w-md">
-                Select a supplier from the left panel
-                to view purchase orders, invoices
-                and supplier details.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUPPLIER DETAILS */}
-
-      {selectedSupplier && (
-
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-          {/* LEFT SIDEBAR */}
-
-          <div className="space-y-4">
-
-            <button
-              onClick={closeHistory}
-              className="w-full px-5 py-3 bg-slate-500 hover:bg-slate-600 text-white rounded-2xl font-semibold transition"
-            >
-              ← Back
-            </button>
-
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-
-              <h2 className="text-2xl font-bold text-slate-800 mb-5">
-                Supplier Info
-              </h2>
-
-              <div className="space-y-4">
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Supplier Name
-                  </p>
-
-                  <p className="font-bold text-slate-800 mt-1">
-                    {
-                      selectedSupplier.supplier_name
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Contact Person
-                  </p>
-
-                  <p className="font-semibold text-slate-700 mt-1">
-                    {
-                      selectedSupplier.contact_person
-                    }
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Phone
-                  </p>
-
-                  <p className="font-semibold text-slate-700 mt-1">
-                    {selectedSupplier.phone}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-
-                <Link
-                  href={`/pharmacy/purchase-orders/create?supplier_id=${selectedSupplier.id}`}
-                  className="block text-center px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold transition"
-                >
-                  📦 Create Purchase Order
-                </Link>
-
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
-                  onClick={() =>
-                    handleEdit(
-                      selectedSupplier
-                    )
-                  }
-                  className="w-full px-5 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-semibold transition"
+                  type="submit"
+                  className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
                 >
-                  ✏️ Edit Supplier
+                  {editingId
+                    ? 'Update Supplier'
+                    : 'Save Supplier'}
                 </button>
 
                 <button
-                  onClick={() =>
-                    handleDelete(
-                      selectedSupplier.id
-                    )
-                  }
-                  className="w-full px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-semibold transition"
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-2xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  🗑️ Delete Supplier
+                  Cancel
                 </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ================= LIST VIEW ================= */}
+
+        {!selectedSupplier && (
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            {/* LEFT PANEL */}
+
+            <div className="xl:col-span-4">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="relative mb-5">
+                  <Search
+                    size={18}
+                    className="absolute left-4 top-3.5 text-slate-400"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Search suppliers..."
+                    value={searchQuery}
+                    onChange={(e) =>
+                      setSearchQuery(
+                        e.target.value
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="max-h-[720px] space-y-3 overflow-y-auto pr-1">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-16 text-slate-500">
+                      <Loader2 className="mr-2 animate-spin" />
+                      Loading suppliers...
+                    </div>
+                  ) : filteredSuppliers.length ===
+                    0 ? (
+                    <div className="py-16 text-center text-slate-500">
+                      No suppliers found
+                    </div>
+                  ) : (
+                    filteredSuppliers.map(
+                      (supplier) => (
+                        <button
+                          key={
+                            supplier.id
+                          }
+                          onClick={() =>
+                            handleViewHistory(
+                              supplier
+                            )
+                          }
+                          className="w-full rounded-3xl border border-slate-200 bg-white p-5 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <h3 className="truncate text-lg font-bold text-slate-900">
+                                {
+                                  supplier.supplier_name
+                                }
+                              </h3>
+
+                              <p className="mt-1 text-sm text-slate-600">
+                                {
+                                  supplier.contact_person
+                                }
+                              </p>
+
+                              <div className="mt-4 space-y-2">
+                                <div className="flex items-center gap-2 text-sm text-slate-500">
+                                  <Phone size={14} />
+                                  {
+                                    supplier.phone
+                                  }
+                                </div>
+
+                                <div className="flex items-center gap-2 text-sm text-slate-500">
+                                  <MapPin size={14} />
+                                  {
+                                    supplier.city
+                                  }
+                                  ,{' '}
+                                  {
+                                    supplier.state
+                                  }
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                              View
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* EMPTY STATE */}
+
+            <div className="xl:col-span-8">
+              <div className="flex min-h-[720px] flex-col items-center justify-center rounded-[28px] border border-slate-200 bg-white p-10 text-center shadow-sm">
+                <div className="mb-5 rounded-full bg-blue-100 p-6 text-blue-700">
+                  <Building2 size={50} />
+                </div>
+
+                <h2 className="text-3xl font-bold text-slate-900">
+                  Supplier Dashboard
+                </h2>
+
+                <p className="mt-3 max-w-lg text-slate-500">
+                  Select a supplier from
+                  the left panel to view
+                  invoices, purchase
+                  orders, product history
+                  and supplier analytics.
+                </p>
               </div>
             </div>
           </div>
+        )}
 
-          {/* RIGHT CONTENT */}
+        {/* ================= DETAILS VIEW ================= */}
 
-          <div className="xl:col-span-2 space-y-6">
+        {selectedSupplier && (
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            {/* SIDEBAR */}
 
-            {historyLoading ? (
+            <div className="space-y-5 xl:col-span-4">
+              <button
+                onClick={closeHistory}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+              >
+                <ArrowLeft size={18} />
+                Back To Suppliers
+              </button>
 
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-10 text-center text-slate-500">
-                Loading supplier history...
-              </div>
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-6 flex items-center gap-4">
+                  <div className="rounded-3xl bg-blue-100 p-4 text-blue-700">
+                    <Building2 size={30} />
+                  </div>
 
-            ) : supplierHistory ? (
-
-              <>
-                {/* PURCHASE ORDERS */}
-
-                <div className="bg-white rounded-3xl border border-green-200 shadow-sm p-4 sm:p-6">
-
-                  <div className="flex items-center justify-between mb-5">
-
-                    <h3 className="text-2xl font-bold text-slate-800">
-                      Purchase Orders
-                    </h3>
-
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
                       {
-                        supplierHistory
-                          .purchaseOrders
-                          .length
-                      }{" "}
-                      Orders
-                    </span>
+                        selectedSupplier.supplier_name
+                      }
+                    </h2>
+
+                    <p className="text-sm text-slate-500">
+                      Supplier Profile
+                    </p>
                   </div>
+                </div>
 
-                  {supplierHistory.purchaseOrders
-                    .length === 0 ? (
-
-                    <p className="text-slate-500">
-                      No purchase orders found
+                <div className="space-y-5">
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Contact Person
                     </p>
 
-                  ) : (
+                    <p className="mt-1 font-semibold text-slate-800">
+                      {
+                        selectedSupplier.contact_person
+                      }
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Phone size={16} />
+                      {
+                        selectedSupplier.phone
+                      }
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2 text-slate-700">
+                      <Mail size={16} />
+                      {selectedSupplier.email ||
+                        '-'}
+                    </div>
+
+                    <div className="mt-3 flex items-start gap-2 text-slate-700">
+                      <MapPin
+                        size={16}
+                        className="mt-0.5"
+                      />
+
+                      <span>
+                        {
+                          selectedSupplier.city
+                        }
+                        ,{' '}
+                        {
+                          selectedSupplier.state
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      GST Number
+                    </p>
+
+                    <p className="mt-1 font-semibold text-slate-800">
+                      {
+                        selectedSupplier.gst_number
+                      }
+                    </p>
+
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Drug License
+                    </p>
+
+                    <p className="mt-1 font-semibold text-slate-800">
+                      {
+                        selectedSupplier.drug_license_number
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <Link
+                    href={`/pharmacy/purchase-orders/create?supplier_id=${selectedSupplier.id}`}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+                  >
+                    <Plus size={18} />
+                    Create PO
+                  </Link>
+
+                  <button
+                    onClick={() =>
+                      handleEdit(
+                        selectedSupplier
+                      )
+                    }
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-semibold text-white transition hover:bg-amber-600"
+                  >
+                    <Pencil size={18} />
+                    Edit Supplier
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(
+                        selectedSupplier.id
+                      )
+                    }
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-700"
+                  >
+                    <Trash2 size={18} />
+                    Delete Supplier
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT CONTENT */}
+
+            <div className="space-y-6 xl:col-span-8">
+              {historyLoading ? (
+                <div className="rounded-[28px] border border-slate-200 bg-white p-20 text-center shadow-sm">
+                  <Loader2 className="mx-auto mb-4 animate-spin text-slate-500" />
+
+                  <p className="text-slate-500">
+                    Loading supplier
+                    history...
+                  </p>
+                </div>
+              ) : supplierHistory ? (
+                <>
+                  {/* PURCHASE ORDERS */}
+
+                  <div className="rounded-[28px] border border-emerald-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
+                          <FileText size={22} />
+                        </div>
+
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-900">
+                            Purchase Orders
+                          </h3>
+
+                          <p className="text-sm text-slate-500">
+                            Supplier PO
+                            history
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
+                        {
+                          supplierHistory
+                            .purchaseOrders
+                            .length
+                        }{' '}
+                        Orders
+                      </span>
+                    </div>
 
                     <div className="space-y-4">
-
                       {supplierHistory.purchaseOrders.map(
                         (po) => (
-
                           <div
                             key={po.id}
-                            className="border border-slate-200 rounded-2xl p-4 hover:bg-slate-50 transition"
+                            className="rounded-3xl border border-slate-200 p-5 transition hover:bg-slate-50"
                           >
-
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                               <div>
-
-                                <p className="font-bold text-slate-800">
+                                <h4 className="text-lg font-bold text-slate-900">
                                   {
                                     po.invoice_number
                                   }
-                                </p>
+                                </h4>
 
-                                <p className="text-sm text-slate-500 mt-1">
+                                <p className="mt-1 text-sm text-slate-500">
                                   {new Date(
                                     po.purchase_date
                                   ).toLocaleDateString()}
                                 </p>
                               </div>
 
-                              <div className="flex items-center justify-between sm:justify-end gap-4">
-
-                                <div className="font-bold text-green-700">
-                                  ₹
-                                  {Number(
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="text-xl font-bold text-emerald-700">
+                                  {formatCurrency(
                                     po.total_amount
-                                  ).toFixed(2)}
+                                  )}
                                 </div>
 
-                                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
-                                  {po.status}
+                                <span
+                                  className={`rounded-full px-4 py-2 text-sm font-semibold ${getStatusClass(
+                                    po.status
+                                  )}`}
+                                >
+                                  {
+                                    po.status
+                                  }
                                 </span>
                               </div>
                             </div>
@@ -926,91 +1091,85 @@ return (
                         )
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* PURCHASE ITEMS */}
+                  {/* PURCHASE ITEMS */}
 
-                <div className="bg-white rounded-3xl border border-blue-200 shadow-sm p-4 sm:p-6">
+                  <div className="rounded-[28px] border border-blue-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 flex items-center gap-3">
+                      <div className="rounded-2xl bg-blue-100 p-3 text-blue-700">
+                        <Package size={22} />
+                      </div>
 
-                  <h3 className="text-2xl font-bold text-slate-800 mb-5">
-                    Purchase Items
-                  </h3>
+                      <div>
+                        <h3 className="text-2xl font-bold text-slate-900">
+                          Purchase Items
+                        </h3>
 
-                  {supplierHistory.purchaseItems
-                    .length === 0 ? (
-
-                    <p className="text-slate-500">
-                      No purchase items found
-                    </p>
-
-                  ) : (
+                        <p className="text-sm text-slate-500">
+                          Recently purchased
+                          products
+                        </p>
+                      </div>
+                    </div>
 
                     <div className="space-y-4">
-
                       {supplierHistory.purchaseItems.map(
                         (item) => (
-
                           <div
                             key={item.id}
-                            className="border border-slate-200 rounded-2xl p-4"
+                            className="rounded-3xl border border-slate-200 p-5"
                           >
-
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
+                            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                               <div>
-
-                                <h4 className="font-bold text-slate-800">
+                                <h4 className="text-lg font-bold text-slate-900">
                                   {
                                     item.product_name
                                   }
                                 </h4>
 
-                                <p className="text-sm text-slate-500 mt-1">
-                                  Batch:{" "}
+                                <p className="mt-1 text-sm text-slate-500">
+                                  Batch:{' '}
                                   {
                                     item.batch_number
                                   }
                                 </p>
                               </div>
 
-                              <div className="grid grid-cols-2 sm:flex gap-4 text-sm">
-
-                                <div>
-                                  <p className="text-slate-500">
+                              <div className="grid grid-cols-2 gap-4 lg:flex">
+                                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                  <p className="text-xs text-slate-400">
                                     Qty
                                   </p>
 
-                                  <p className="font-semibold">
+                                  <p className="font-bold text-slate-800">
                                     {
                                       item.quantity
                                     }
                                   </p>
                                 </div>
 
-                                <div>
-                                  <p className="text-slate-500">
+                                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                  <p className="text-xs text-slate-400">
                                     Purchase
                                   </p>
 
-                                  <p className="font-semibold">
-                                    ₹
-                                    {Number(
+                                  <p className="font-bold text-slate-800">
+                                    {formatCurrency(
                                       item.purchase_price
-                                    ).toFixed(2)}
+                                    )}
                                   </p>
                                 </div>
 
-                                <div>
-                                  <p className="text-slate-500">
+                                <div className="rounded-2xl bg-emerald-50 px-4 py-3">
+                                  <p className="text-xs text-emerald-500">
                                     MRP
                                   </p>
 
-                                  <p className="font-semibold text-green-700">
-                                    ₹
-                                    {Number(
+                                  <p className="font-bold text-emerald-700">
+                                    {formatCurrency(
                                       item.mrp
-                                    ).toFixed(2)}
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -1019,72 +1178,67 @@ return (
                         )
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* INVOICES */}
-
-                <div className="bg-white rounded-3xl border border-purple-200 shadow-sm p-4 sm:p-6">
-
-                  <div className="flex items-center justify-between mb-5">
-
-                    <h3 className="text-2xl font-bold text-slate-800">
-                      Supplier Invoices
-                    </h3>
-
-                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
-                      {
-                        supplierHistory.invoices
-                          .length
-                      }{" "}
-                      Invoices
-                    </span>
                   </div>
 
-                  {supplierHistory.invoices
-                    .length === 0 ? (
+                  {/* INVOICES */}
 
-                    <p className="text-slate-500">
-                      No invoices found
-                    </p>
+                  <div className="rounded-[28px] border border-purple-200 bg-white p-6 shadow-sm">
+                    <div className="mb-6 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-purple-100 p-3 text-purple-700">
+                          <CreditCard size={22} />
+                        </div>
 
-                  ) : (
+                        <div>
+                          <h3 className="text-2xl font-bold text-slate-900">
+                            Supplier Invoices
+                          </h3>
+
+                          <p className="text-sm text-slate-500">
+                            Invoice & payment
+                            tracking
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700">
+                        {
+                          supplierHistory
+                            .invoices
+                            .length
+                        }{' '}
+                        Invoices
+                      </span>
+                    </div>
 
                     <div className="space-y-4">
-
                       {supplierHistory.invoices.map(
                         (invoice) => (
-
                           <div
                             key={invoice.id}
-                            className="border border-slate-200 rounded-2xl p-4"
+                            className="rounded-3xl border border-slate-200 p-5"
                           >
-
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                               <div>
-
-                                <h4 className="font-bold text-slate-800">
+                                <h4 className="text-lg font-bold text-slate-900">
                                   {
                                     invoice.invoice_number
                                   }
                                 </h4>
 
-                                <p className="text-sm text-slate-500 mt-1">
+                                <p className="mt-1 text-sm text-slate-500">
                                   Payment Status
                                 </p>
                               </div>
 
-                              <div className="flex items-center justify-between sm:justify-end gap-4">
-
-                                <div className="font-bold text-purple-700">
-                                  ₹
-                                  {Number(
+                              <div className="flex items-center gap-4">
+                                <div className="text-xl font-bold text-purple-700">
+                                  {formatCurrency(
                                     invoice.total_amount
-                                  ).toFixed(2)}
+                                  )}
                                 </div>
 
-                                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-semibold">
+                                <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-700">
                                   {
                                     invoice.payment_status
                                   }
@@ -1095,15 +1249,13 @@ return (
                         )
                       )}
                     </div>
-                  )}
-                </div>
-              </>
-
-            ) : null}
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
-  </div>
-);
+  );
 }

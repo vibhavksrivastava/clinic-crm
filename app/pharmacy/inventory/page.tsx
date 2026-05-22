@@ -10,34 +10,32 @@ import {
   Search,
   CalendarDays,
   IndianRupee,
+  TrendingUp,
+  Boxes,
+  Activity,
+  ArrowUpRight,
+  Pill,
+  Clock3,
+  ShieldAlert,
+  RefreshCw,
+  Eye,
 } from 'lucide-react';
 
 interface InventoryItem {
   id: string;
-
   batch_number?: string;
-
   expiry_date?: string;
-
   purchase_price?: number;
-
   selling_price?: number;
-
   stock_quantity: number;
-
   minimum_stock?: number;
 
   pharmacy_products?: {
     id: string;
-
     name: string;
-
     sku?: string;
-
     category?: string;
-
     gst_percent?: number;
-
     unit?: string;
   };
 }
@@ -90,8 +88,14 @@ export default function InventoryPage() {
     fetchInventory();
   }, []);
 
-  // ================= COUNTS =================
+  // ================= STATS =================
   const totalItems = inventory.length;
+
+  const totalStockUnits = inventory.reduce(
+    (sum, item) =>
+      sum + Number(item.stock_quantity || 0),
+    0
+  );
 
   const lowStockCount = inventory.filter(
     (item) =>
@@ -104,21 +108,25 @@ export default function InventoryPage() {
     (item) => item.stock_quantity === 0
   ).length;
 
-  const nearExpiryCount = inventory.filter((item) => {
-    if (!item.expiry_date) return false;
+  const nearExpiryCount = inventory.filter(
+    (item) => {
+      if (!item.expiry_date) return false;
 
-    const expiryDate = new Date(item.expiry_date);
+      const expiryDate = new Date(
+        item.expiry_date
+      );
 
-    const today = new Date();
+      const today = new Date();
 
-    const diffDays =
-      (expiryDate.getTime() - today.getTime()) /
-      (1000 * 60 * 60 * 24);
+      const diffDays =
+        (expiryDate.getTime() -
+          today.getTime()) /
+        (1000 * 60 * 60 * 24);
 
-    return diffDays <= 30;
-  }).length;
+      return diffDays <= 30;
+    }
+  ).length;
 
-  // ================= INVENTORY VALUE =================
   const inventoryValue = inventory.reduce(
     (sum, item) =>
       sum +
@@ -127,11 +135,21 @@ export default function InventoryPage() {
     0
   );
 
+  const sellingValue = inventory.reduce(
+    (sum, item) =>
+      sum +
+      (item.selling_price || 0) *
+        item.stock_quantity,
+    0
+  );
+
+  const expectedProfit =
+    sellingValue - inventoryValue;
+
   // ================= FILTER =================
   const filteredInventory = useMemo(() => {
     let filtered = inventory;
 
-    // Search
     filtered = filtered.filter((item) => {
       const productName =
         item.pharmacy_products?.name?.toLowerCase() ||
@@ -145,13 +163,14 @@ export default function InventoryPage() {
         item.batch_number?.toLowerCase() || '';
 
       return (
-        productName.includes(search.toLowerCase()) ||
+        productName.includes(
+          search.toLowerCase()
+        ) ||
         sku.includes(search.toLowerCase()) ||
         batch.includes(search.toLowerCase())
       );
     });
 
-    // Filter
     switch (selectedFilter) {
       case 'low_stock':
         return filtered.filter(
@@ -189,391 +208,547 @@ export default function InventoryPage() {
     }
   }, [inventory, selectedFilter, search]);
 
-  // ================= CARD STYLE =================
-  const getCardClass = (
-    filter: FilterType,
-    activeColor: string
+  // ================= HELPERS =================
+  const getExpiryStatus = (
+    expiry?: string
   ) => {
-    return `
-      rounded-2xl border-2 p-5 shadow-sm cursor-pointer transition-all
-      ${
-        selectedFilter === filter
-          ? `${activeColor} border-blue-600 scale-[1.02]`
-          : 'bg-white border-transparent hover:border-gray-300'
-      }
-    `;
+    if (!expiry)
+      return {
+        label: 'No Expiry',
+        className:
+          'bg-gray-100 text-gray-600',
+      };
+
+    const expiryDate = new Date(expiry);
+
+    const today = new Date();
+
+    const diffDays = Math.ceil(
+      (expiryDate.getTime() -
+        today.getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays <= 0) {
+      return {
+        label: 'Expired',
+        className:
+          'bg-red-100 text-red-700',
+      };
+    }
+
+    if (diffDays <= 30) {
+      return {
+        label: `${diffDays} Days Left`,
+        className:
+          'bg-orange-100 text-orange-700',
+      };
+    }
+
+    return {
+      label: expiry,
+      className:
+        'bg-green-100 text-green-700',
+    };
   };
 
+  const getStockStatus = (
+    stock: number,
+    min?: number
+  ) => {
+    if (stock === 0) {
+      return {
+        label: 'Out Of Stock',
+        className:
+          'bg-red-100 text-red-700',
+      };
+    }
+
+    if (stock <= (min || 10)) {
+      return {
+        label: 'Low Stock',
+        className:
+          'bg-yellow-100 text-yellow-700',
+      };
+    }
+
+    return {
+      label: 'Available',
+      className:
+        'bg-emerald-100 text-emerald-700',
+    };
+  };
+
+  const summaryCards = [
+    {
+      title: 'Total Medicines',
+      value: totalItems,
+      sub: `${totalStockUnits} Units`,
+      icon: Boxes,
+      color:
+        'from-blue-600 to-indigo-600',
+      filter: 'all' as FilterType,
+    },
+    {
+      title: 'Low Stock',
+      value: lowStockCount,
+      sub: 'Needs Reorder',
+      icon: AlertTriangle,
+      color:
+        'from-yellow-500 to-orange-500',
+      filter: 'low_stock' as FilterType,
+    },
+    {
+      title: 'Out Of Stock',
+      value: outOfStockCount,
+      sub: 'Immediate Action',
+      icon: ShieldAlert,
+      color: 'from-red-500 to-rose-600',
+      filter: 'out_of_stock' as FilterType,
+    },
+    {
+      title: 'Near Expiry',
+      value: nearExpiryCount,
+      sub: 'Within 30 Days',
+      icon: Clock3,
+      color:
+        'from-orange-500 to-amber-600',
+      filter: 'near_expiry' as FilterType,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-[#f4f7fb]">
       <Header />
 
       <main className="p-4 md:p-6">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <button
               onClick={() =>
                 router.push(dashboardUrl)
               }
-              className="mb-3 text-sm font-semibold text-blue-600 hover:text-blue-800"
+              className="mb-3 inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
             >
               ← Back To Dashboard
             </button>
 
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-slate-900">
               Pharmacy Inventory
             </h1>
 
-            <p className="mt-1 text-gray-500">
-              Manage medicine batches, stock &
-              expiry tracking
-            </p>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-5">
-          {/* Total */}
-          <div
-            onClick={() =>
-              setSelectedFilter('all')
-            }
-            className={getCardClass(
-              'all',
-              'bg-blue-50'
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <Package className="text-blue-600" />
-
-              <span className="text-xs text-gray-500">
-                Total
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-3xl font-bold">
-              {totalItems}
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Inventory Items
+            <p className="mt-2 text-sm text-slate-500">
+              Advanced stock monitoring,
+              batch tracking & inventory
+              analytics
             </p>
           </div>
 
-          {/* Low Stock */}
-          <div
-            onClick={() =>
-              setSelectedFilter('low_stock')
-            }
-            className={getCardClass(
-              'low_stock',
-              'bg-yellow-50'
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <AlertTriangle className="text-yellow-600" />
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={fetchInventory}
+              className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+            >
+              <RefreshCw size={17} />
+              Refresh
+            </button>
 
-              <span className="text-xs text-gray-500">
-                Low Stock
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-3xl font-bold text-yellow-700">
-              {lowStockCount}
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Reorder Required
-            </p>
-          </div>
-
-          {/* Out Of Stock */}
-          <div
-            onClick={() =>
-              setSelectedFilter('out_of_stock')
-            }
-            className={getCardClass(
-              'out_of_stock',
-              'bg-red-50'
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <Package className="text-red-600" />
-
-              <span className="text-xs text-gray-500">
-                Empty
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-3xl font-bold text-red-700">
-              {outOfStockCount}
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Out Of Stock
-            </p>
-          </div>
-
-          {/* Near Expiry */}
-          <div
-            onClick={() =>
-              setSelectedFilter('near_expiry')
-            }
-            className={getCardClass(
-              'near_expiry',
-              'bg-orange-50'
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <CalendarDays className="text-orange-600" />
-
-              <span className="text-xs text-gray-500">
-                Expiry
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-3xl font-bold text-orange-700">
-              {nearExpiryCount}
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Expiring Soon
-            </p>
-          </div>
-
-          {/* Inventory Value */}
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <IndianRupee className="text-green-600" />
-
-              <span className="text-xs text-gray-500">
-                Value
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-2xl font-bold text-green-700">
-              ₹{inventoryValue.toFixed(2)}
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Total Inventory Value
-            </p>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-3 text-gray-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Search medicine, SKU or batch..."
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
+            <button
+              onClick={() =>
+                router.push(
+                  '/pharmacy/purchase-orders/create'
+                )
               }
-              className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 outline-none focus:border-blue-500"
-            />
+              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:scale-[1.02]"
+            >
+              <Package size={17} />
+              Create Purchase Order
+            </button>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        {/* TOP KPI */}
+        <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <button
+                key={card.title}
+                onClick={() =>
+                  setSelectedFilter(card.filter)
+                }
+                className={`group relative overflow-hidden rounded-3xl border p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${
+                  selectedFilter === card.filter
+                    ? 'border-blue-500 bg-white shadow-xl'
+                    : 'border-white bg-white shadow-sm'
+                }`}
+              >
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-[0.06]`}
+                />
+
+                <div className="relative flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">
+                      {card.title}
+                    </p>
+
+                    <h2 className="mt-3 text-4xl font-bold text-slate-900">
+                      {card.value}
+                    </h2>
+
+                    <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+                      <Activity size={14} />
+                      {card.sub}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`rounded-2xl bg-gradient-to-br p-4 text-white shadow-lg ${card.color}`}
+                  >
+                    <Icon size={24} />
+                  </div>
+                </div>
+
+                <div className="relative mt-5 flex items-center gap-2 text-sm font-semibold text-blue-700">
+                  View Details
+                  <ArrowUpRight size={15} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* VALUE CARDS */}
+        <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-3xl bg-gradient-to-r from-emerald-600 to-green-600 p-6 text-white shadow-lg">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-emerald-100">
+                  Inventory Cost Value
+                </p>
+
+                <h2 className="mt-3 text-4xl font-bold">
+                  ₹
+                  {inventoryValue.toLocaleString(
+                    'en-IN'
+                  )}
+                </h2>
+
+                <p className="mt-2 text-sm text-emerald-100">
+                  Based on purchase pricing
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/20 p-4">
+                <IndianRupee size={28} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-blue-100">
+                  Selling Value
+                </p>
+
+                <h2 className="mt-3 text-4xl font-bold">
+                  ₹
+                  {sellingValue.toLocaleString(
+                    'en-IN'
+                  )}
+                </h2>
+
+                <p className="mt-2 text-sm text-blue-100">
+                  Current stock market value
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/20 p-4">
+                <TrendingUp size={28} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-gradient-to-r from-purple-600 to-fuchsia-600 p-6 text-white shadow-lg">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-purple-100">
+                  Expected Profit
+                </p>
+
+                <h2 className="mt-3 text-4xl font-bold">
+                  ₹
+                  {expectedProfit.toLocaleString(
+                    'en-IN'
+                  )}
+                </h2>
+
+                <p className="mt-2 text-sm text-purple-100">
+                  Estimated gross margin
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/20 p-4">
+                <ArrowUpRight size={28} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SEARCH */}
+        <div className="mb-6 rounded-3xl border border-white bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Inventory Records
+              </h2>
+
+              <p className="text-sm text-slate-500">
+                Search medicines, SKU,
+                batches & expiry details
+              </p>
+            </div>
+
+            <div className="relative w-full lg:w-[420px]">
+              <Search
+                size={18}
+                className="absolute left-4 top-4 text-slate-400"
+              />
+
+              <input
+                type="text"
+                placeholder="Search medicine, SKU or batch..."
+                value={search}
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <div className="overflow-hidden rounded-3xl border border-white bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Live Inventory
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {filteredInventory.length}{' '}
+                  records found
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+                Updated Live
+              </div>
+            </div>
+          </div>
+
           {loading ? (
-            <div className="p-10 text-center text-gray-500">
-              Loading inventory...
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="mb-4 h-14 w-14 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+
+              <p className="text-sm font-medium text-slate-500">
+                Loading inventory...
+              </p>
             </div>
           ) : filteredInventory.length === 0 ? (
-            <div className="p-10 text-center text-gray-500">
-              No inventory found
+            <div className="flex flex-col items-center justify-center py-24">
+              <Package
+                size={52}
+                className="mb-4 text-slate-300"
+              />
+
+              <h3 className="text-lg font-semibold text-slate-700">
+                No Inventory Found
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Try changing your search or
+                filter
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Medicine
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      SKU
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Batch
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Expiry
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Stock
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Min Stock
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Purchase
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Selling
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      GST
-                    </th>
-
-                    <th className="px-4 py-4 text-left text-sm font-semibold">
-                      Status
-                    </th>
+                    {[
+                      'Medicine',
+                      'SKU',
+                      'Batch',
+                      'Expiry',
+                      'Stock',
+                      'Min',
+                      'Purchase',
+                      'Selling',
+                      'GST',
+                      'Status',
+                    ].map((head) => (
+                      <th
+                        key={head}
+                        className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
+                      >
+                        {head}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {filteredInventory.map((item) => {
-                    const isLowStock =
-                      item.stock_quantity > 0 &&
-                      item.stock_quantity <=
-                        (item.minimum_stock || 10);
+                  {filteredInventory.map(
+                    (item) => {
+                      const stockStatus =
+                        getStockStatus(
+                          item.stock_quantity,
+                          item.minimum_stock
+                        );
 
-                    const isOutOfStock =
-                      item.stock_quantity === 0;
+                      const expiryStatus =
+                        getExpiryStatus(
+                          item.expiry_date
+                        );
 
-                    const isNearExpiry =
-                      item.expiry_date
-                        ? new Date(
-                            item.expiry_date
-                          ).getTime() -
-                            new Date().getTime() <=
-                          30 *
-                            24 *
-                            60 *
-                            60 *
-                            1000
-                        : false;
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className="border-t border-gray-100 hover:bg-gray-50"
-                      >
-                        {/* Medicine */}
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {
-                                item
-                                  .pharmacy_products
-                                  ?.name
-                              }
-                            </p>
-
-                            <p className="text-xs text-gray-500">
-                              {
-                                item
-                                  .pharmacy_products
-                                  ?.category
-                              }
-                            </p>
-                          </div>
-                        </td>
-
-                        {/* SKU */}
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          {
-                            item.pharmacy_products
-                              ?.sku
-                          }
-                        </td>
-
-                        {/* Batch */}
-                        <td className="px-4 py-4 text-sm font-medium text-gray-700">
-                          {item.batch_number || '-'}
-                        </td>
-
-                        {/* Expiry */}
-                        <td className="px-4 py-4 text-sm">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              isNearExpiry
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {item.expiry_date ||
-                              '-'}
-                          </span>
-                        </td>
-
-                        {/* Stock */}
-                        <td
-                          className={`px-4 py-4 text-sm font-bold ${
-                            isOutOfStock
-                              ? 'text-red-700'
-                              : isLowStock
-                              ? 'text-yellow-700'
-                              : 'text-green-700'
-                          }`}
+                      return (
+                        <tr
+                          key={item.id}
+                          className="border-t border-slate-100 transition hover:bg-slate-50/80"
                         >
-                          {item.stock_quantity}
-                        </td>
+                          {/* MEDICINE */}
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100">
+                                <Pill className="text-blue-700" />
+                              </div>
 
-                        {/* Min */}
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          {item.minimum_stock ||
-                            10}
-                        </td>
+                              <div>
+                                <p className="font-semibold text-slate-900">
+                                  {
+                                    item
+                                      .pharmacy_products
+                                      ?.name
+                                  }
+                                </p>
 
-                        {/* Purchase */}
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          ₹
-                          {item.purchase_price ||
-                            0}
-                        </td>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {
+                                    item
+                                      .pharmacy_products
+                                      ?.category
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          </td>
 
-                        {/* Selling */}
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          ₹
-                          {item.selling_price ||
-                            0}
-                        </td>
+                          {/* SKU */}
+                          <td className="px-6 py-5 text-sm font-medium text-slate-700">
+                            {item
+                              .pharmacy_products
+                              ?.sku || '-'}
+                          </td>
 
-                        {/* GST */}
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          {item.pharmacy_products
-                            ?.gst_percent || 0}
-                          %
-                        </td>
+                          {/* BATCH */}
+                          <td className="px-6 py-5">
+                            <div className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+                              {item.batch_number ||
+                                '-'}
+                            </div>
+                          </td>
 
-                        {/* Status */}
-                        <td className="px-4 py-4">
-                          {isOutOfStock ? (
-                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                              Out Of Stock
+                          {/* EXPIRY */}
+                          <td className="px-6 py-5">
+                            <span
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${expiryStatus.className}`}
+                            >
+                              {
+                                expiryStatus.label
+                              }
                             </span>
-                          ) : isLowStock ? (
-                            <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
-                              Low Stock
+                          </td>
+
+                          {/* STOCK */}
+                          <td className="px-6 py-5">
+                            <div className="flex flex-col">
+                              <span className="text-lg font-bold text-slate-900">
+                                {
+                                  item.stock_quantity
+                                }
+                              </span>
+
+                              <span className="text-xs text-slate-500">
+                                Units
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* MIN */}
+                          <td className="px-6 py-5 text-sm font-semibold text-slate-700">
+                            {item.minimum_stock ||
+                              10}
+                          </td>
+
+                          {/* PURCHASE */}
+                          <td className="px-6 py-5">
+                            <div className="font-semibold text-slate-800">
+                              ₹
+                              {Number(
+                                item.purchase_price ||
+                                  0
+                              ).toFixed(2)}
+                            </div>
+                          </td>
+
+                          {/* SELLING */}
+                          <td className="px-6 py-5">
+                            <div className="font-bold text-emerald-700">
+                              ₹
+                              {Number(
+                                item.selling_price ||
+                                  0
+                              ).toFixed(2)}
+                            </div>
+                          </td>
+
+                          {/* GST */}
+                          <td className="px-6 py-5">
+                            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
+                              {item
+                                .pharmacy_products
+                                ?.gst_percent || 0}
+                              %
                             </span>
-                          ) : (
-                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                              Available
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${stockStatus.className}`}
+                              >
+                                {
+                                  stockStatus.label
+                                }
+                              </span>
+
+                              <button className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                                <Eye size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
                 </tbody>
               </table>
             </div>

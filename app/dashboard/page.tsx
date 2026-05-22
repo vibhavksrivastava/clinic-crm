@@ -26,16 +26,8 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const userData = localStorage.getItem('user');
-    if (!userData) return null;
-    try {
-      return JSON.parse(userData);
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     todaysAppointments: 0,
@@ -44,22 +36,24 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('user');
+  setMounted(true);
 
-    if (!token || !userData) {
-      router.push('/login');
-      return;
-    }
+  const token = localStorage.getItem('authToken');
+  const userData = localStorage.getItem('user');
 
-    try {
-      JSON.parse(userData);
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      router.push('/login');
-    }
-  }, [router]);
+  if (!token || !userData) {
+    router.push('/login');
+    return;
+  }
+
+  try {
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+    router.push('/login');
+  }
+}, [router]);
 
   // Fetch dashboard stats
   useEffect(() => {
@@ -96,9 +90,14 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
-  if (!user) {
-    return null;
-  }
+  if (!mounted || !user) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-gray-500">Loading dashboard...</div>
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen bg-gray-50">
