@@ -2,20 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
 import Link from 'next/link';
+import {
+  Package,
+  AlertTriangle,
+  IndianRupee,
+  Receipt,
+  Pill,
+  ShoppingCart,
+  Activity,
+  FileText,
+  Truck,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  ChevronRight,
+  Plus,
+} from 'lucide-react';
 
 interface User {
   id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  role?: {
-    id: string;
-    roleType: string;
-    permissions: string[];
-    name: string;
-  };
+  roleType: string;
+  first_name?: string;
 }
 
 interface DashboardStats {
@@ -27,53 +36,61 @@ interface DashboardStats {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState<DashboardStats>({
     totalPatients: 0,
     todaysAppointments: 0,
     todaysWalkIns: 0,
   });
+
   const [statsLoading, setStatsLoading] = useState(true);
 
+  // -----------------------------
+  // AUTH CHECK (COOKIE BASED)
+  // -----------------------------
   useEffect(() => {
-  setMounted(true);
-
-  const token = localStorage.getItem('authToken');
-  const userData = localStorage.getItem('user');
-
-  if (!token || !userData) {
-    router.push('/login');
-    return;
-  }
-
-  try {
-    const parsedUser = JSON.parse(userData);
-    setUser(parsedUser);
-  } catch (error) {
-    console.error('Error parsing user data:', error);
-    router.push('/login');
-  }
-}, [router]);
-
-  // Fetch dashboard stats
-  useEffect(() => {
-    const fetchStats = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
-
+    const checkAuth = async () => {
       try {
-        const response = await fetch('/api/dashboard/stats', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const res = await fetch('/api/auth/me', {
+          credentials: 'include',
         });
 
-        if (response.ok) {
-          const data = await response.json();
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          router.push('/login');
+          return;
+        }
+
+        setUser(data.user);
+      } catch (err) {
+        console.error('Auth error:', err);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // -----------------------------
+  // FETCH STATS
+  // -----------------------------
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats', {
+          credentials: 'include',
+        });
+
+        if (res.ok) {
+          const data = await res.json();
           setStats(data);
         }
-      } catch (error) {
-        console.error('Error fetching stats:', error);
+      } catch (err) {
+        console.error('Stats error:', err);
       } finally {
         setStatsLoading(false);
       }
@@ -84,153 +101,276 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
     router.push('/login');
   };
 
-  if (!mounted || !user) {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-gray-500">Loading dashboard...</div>
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  const today = new Date();
+
+  const formattedDate = today.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+return (
+  <div className="min-h-screen bg-slate-50">
+
+    <div className="max-w-7xl mx-auto px-6 py-6">
+
+
+            {/* HERO */}
+
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl mb-8">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Activity size={16} />
+              MediQuick Rx
+            </div>
+
+            <h2 className="text-4xl font-bold">
+               Welcome , {user.first_name}
+            </h2>
+
+            <p className="mt-3 text-blue-100 max-w-2xl">
+                Manage clinic operations, returns, appointments and patient care
+            </p>
+          </div>
+
+    {/* TODAY CARD */}
+    <div
+      className="bg-gradient-to-r from-blue-50 to-indigo-50
+      border border-blue-100
+      rounded-3xl px-5 py-4
+      shadow-sm"
+    >
+      <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">
+        Today
+      </div>
+
+      <div className="mt-1 text-lg font-bold text-gray-900">
+        {new Date().toLocaleDateString('en-IN', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })}
+      </div>
     </div>
-  );
-}
+        </div>
+      </div>
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
-        {/* Welcome Section */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
-            Welcome, {user.first_name}!
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">
-            Role: <span className="font-semibold capitalize">{user.role?.name || user.role?.roleType || 'User'}</span>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-slate-500 text-sm">
+                Total Patients
+              </p>
+              <h2 className="text-3xl font-bold text-slate-800 mt-1">
+                {stats.totalPatients}
+              </h2>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+              👨‍⚕️
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-slate-500 text-sm">
+                Today's Appointments
+              </p>
+              <h2 className="text-3xl font-bold text-slate-800 mt-1">
+                {stats.todaysAppointments}
+              </h2>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+              📅
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-slate-500 text-sm">
+                Walk-ins
+              </p>
+              <h2 className="text-3xl font-bold text-slate-800 mt-1">
+                {stats.todaysWalkIns || 0}
+              </h2>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+              🚶
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-slate-500 text-sm">
+                Role Access
+              </p>
+              <h2 className="text-lg font-semibold text-slate-800 mt-1 capitalize">
+                {user.roleType}
+              </h2>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+              🔐
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Quick Access */}
+      <div className="mt-8">
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Quick Access
+          </h2>
+
+          <p className="text-sm text-slate-500">
+            Frequently used modules
           </p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            {statsLoading ? (
-              <div className="animate-pulse">
-                <div className="h-6 sm:h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 sm:h-4 bg-gray-200 rounded w-16"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-blue-600 text-2xl sm:text-3xl font-bold">{stats.totalPatients}</div>
-                <p className="text-gray-600 text-xs sm:text-sm mt-2">Total Patients</p>
-              </>
-            )}
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            {statsLoading ? (
-              <div className="animate-pulse">
-                <div className="h-6 sm:h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 sm:h-4 bg-gray-200 rounded w-20"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-green-600 text-2xl sm:text-3xl font-bold">{stats.todaysAppointments}</div>
-                <p className="text-gray-600 text-xs sm:text-sm mt-2">Appointments Today</p>
-              </>
-            )}
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            {statsLoading ? (
-              <div className="animate-pulse">
-                <div className="h-6 sm:h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 sm:h-4 bg-gray-200 rounded w-16"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-orange-600 text-2xl sm:text-3xl font-bold">{stats.todaysWalkIns || 0}</div>
-                <p className="text-gray-600 text-xs sm:text-sm mt-2">Walk-ins Today</p>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Main Menu */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          {/* Patients */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {(user.roleType === 'doctor' ||
+            user.roleType === 'admin' ||
+            user.roleType === 'super_admin' ||
+            user.roleType === 'receptionist') && (
           <Link
             href="/patients"
-            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition group"
           >
-            <div className="text-2xl sm:text-3xl mb-3">👥</div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Patients</h2>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Manage patient records and history</p>
-          </Link>
+            <div className="text-3xl">🧑‍⚕️</div>
 
-          {/* Appointments */}
+            <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-blue-600">
+              Patients
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Manage patient profiles and records
+            </p>
+          </Link>
+          )}
           <Link
             href="/appointments"
-            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-green-300 transition group"
           >
-            <div className="text-2xl sm:text-3xl mb-3">📅</div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Appointments</h2>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Schedule and manage appointments</p>
+            <div className="text-3xl">📆</div>
+
+            <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-green-600">
+              Appointments
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Schedule and manage bookings
+            </p>
           </Link>
 
-          {/* Walk-ins */}
-          <Link
-            href="/walk-ins"
-            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
-          >
-            <div className="text-2xl sm:text-3xl mb-3">🚶</div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Walk-ins</h2>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Track daily walk-in patients</p>
-          </Link>
-
-          {/* Prescriptions */}
           <Link
             href="/prescriptions"
-            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-purple-300 transition group"
           >
-            <div className="text-2xl sm:text-3xl mb-3">💊</div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Prescriptions</h2>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Create and manage prescriptions</p>
+            <div className="text-3xl">💊</div>
+
+            <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-purple-600">
+              Prescriptions
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              View and generate prescriptions
+            </p>
           </Link>
 
-          {/* Invoices */}
           <Link
             href="/invoicing"
-            className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-orange-300 transition group"
           >
-            <div className="text-2xl sm:text-3xl mb-3">💰</div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Invoicing</h2>
-            <p className="text-gray-600 mt-2 text-sm sm:text-base">Generate and track invoices</p>
+            <div className="text-3xl">💳</div>
+
+            <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-orange-600">
+              Billing
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Invoice and payment management
+            </p>
           </Link>
 
-          {/* Admin Panel */}
-          {(user.role?.roleType === 'admin' || user.role?.roleType === 'super_admin' || user.role?.roleType === 'clinic_admin' || user.role?.roleType === 'branch_admin') && (
+{(user.roleType === 'doctor' ||
+            user.roleType === 'admin' ||
+            user.roleType === 'super_admin' ||
+            user.roleType === 'pharmacist') && (
+          <Link
+            href="/pharmacy"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-300 transition group"
+          >
+            <div className="text-3xl">💊</div>
+
+            <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-blue-600">
+              Pharmacy
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Manage patient profiles and records
+            </p>
+          </Link>
+          )}
+
+          {(user.roleType === 'admin' ||
+            user.roleType === 'super_admin') && (
             <Link
               href="/admin"
-              className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition cursor-pointer"
+              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-red-300 transition group"
             >
-              <div className="text-2xl sm:text-3xl mb-3">⚙️</div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Admin Panel</h2>
-              <p className="text-gray-600 mt-2 text-sm sm:text-base">System administration and settings</p>
+              <div className="text-3xl">⚙️</div>
+
+              <h3 className="font-semibold text-slate-800 mt-3 group-hover:text-red-600">
+                Admin Panel
+              </h3>
+
+              <p className="text-sm text-slate-500 mt-1">
+                System configuration & RBAC
+              </p>
             </Link>
           )}
-        </div>
 
-        {/* Logout Button */}
-        <div className="text-center">
-          <button
-            onClick={handleLogout}
-            className="px-4 sm:px-6 py-2 bg-red-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-red-700 transition"
-          >
-            Logout
-          </button>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

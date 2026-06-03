@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-
 import Header from '@/components/Header';
 
 import {
@@ -17,6 +16,8 @@ import {
   Boxes,
   Activity,
   ChevronRight,
+  Link,
+  SkipBack,
 } from 'lucide-react';
 
 interface Medicine {
@@ -279,9 +280,7 @@ export default function PharmacyProductsPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f7fb]">
-      <Header />
-
-      <main className="p-4 md:p-6">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         {/* TOP HERO */}
 
         <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6 text-white shadow-2xl md:p-8">
@@ -338,6 +337,14 @@ export default function PharmacyProductsPage() {
               Add New Product
             </button>
           </div>
+        </div>
+
+        <div >
+           <div >
+            <Link href="/pharmacy" >
+               Back
+            </Link>
+           </div>
         </div>
 
         {/* STATS */}

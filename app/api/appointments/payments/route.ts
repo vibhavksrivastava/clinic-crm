@@ -1,67 +1,33 @@
+import {
+  NextRequest,
+  NextResponse,
+} from 'next/server';
 import { supabase } from '@/lib/db/client';
-import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest, JWTPayload } from '@/lib/auth';
+import { getSessionFromRequest } from '@/lib/auth';
 
-/**
- * Appointment Payments API
- * Handles recording and managing appointment payments
- */
-
-export async function GET(request: NextRequest) {
+export async function POST(
+  req: NextRequest
+) {
   try {
-    const userContext = await getSessionFromRequest(request);
-    if (!userContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session =
+      await getSessionFromRequest(
+        req
+      );
+
+    if (!session) {
+      return NextResponse.json(
+        {
+          error:
+            'Unauthorized',
+        },
+        {
+          status: 401,
+        }
+      );
     }
 
-    const { searchParams } = new URL(request.url);
-    const appointment_id = searchParams.get('appointment_id');
-    const payment_status = searchParams.get('payment_status'); // pending, partial, paid, overdue
-
-    let query = supabase
-      .from('appointment_payments')
-      .select(`*, appointment:appointments(id, patient_id, staff_id, appointment_date, appointment_type), paid_by:staff(first_name, last_name)`);
-
-    if (appointment_id) {
-      query = query.eq('appointment_id', appointment_id);
-    }
-
-    if (payment_status) {
-      query = query.eq('payment_status', payment_status);
-    }
-
-    query = query.order('updated_at', { ascending: false });
-
-    let { data, error } = await query;
-
-    if (error) throw error;
-
-    // If single appointment_id was requested and found, return the first record
-    if (appointment_id && data && data.length > 0) {
-      return NextResponse.json(data[0]);
-    }
-
-    return NextResponse.json(data || []);
-  } catch (error) {
-    console.error('Error fetching payments:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch payments' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const userContext = await getSessionFromRequest(request);
-    if (!userContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Only receptionist and admin can record payments
-    if (!['receptionist', 'clinic_admin', 'branch_admin', 'super_admin'].includes(userContext.roleType)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const body =
+      await req.json();
 
     const {
       appointment_id,
@@ -69,110 +35,222 @@ export async function POST(request: NextRequest) {
       payment_method,
       payment_reference,
       notes,
-    } = await request.json();
+    } = body;
 
-    if (!appointment_id || !amount_paid) {
+    if (
+      !appointment_id ||
+      amount_paid == null
+    ) {
       return NextResponse.json(
-        { error: 'Appointment ID and amount paid are required' },
-        { status: 400 }
+        {
+          error:
+            'appointment_id and amount_paid required',
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    // Get current payment record
-    const { data: currentPayment, error: fetchError } = await supabase
-      .from('appointment_payments')
+    // -----------------------------------
+    // Fetch invoice for appointment
+    // -----------------------------------
+
+    const {
+      data: invoice,
+      error: invoiceError,
+    } = await supabase
+      .from('invoices')
       .select('*')
-      .eq('appointment_id', appointment_id)
-      .single();
+      .eq(
+        'appointment_id',
+        appointment_id
+      )
+      .maybeSingle();
 
-    if (fetchError) throw fetchError;
+    if (
+      invoiceError ||
+      !invoice
+    ) {
+      console.error(
+        'Invoice lookup error:',
+        invoiceError
+      );
 
-    if (!currentPayment) {
       return NextResponse.json(
-        { error: 'Payment record not found for this appointment' },
-        { status: 404 }
+        {
+          error:
+            'Invoice not found',
+        },
+        {
+          status: 404,
+        }
       );
     }
 
-    // Calculate new payment status
-    const newAmountPaid = (currentPayment.amount_paid || 0) + amount_paid;
-    let newStatus = 'partial';
+    const totalAmount =
+      Number(
+        invoice.amount || 0
+      );
 
-    if (newAmountPaid >= currentPayment.amount_due) {
-      newStatus = 'paid';
-    } else if (newAmountPaid === 0) {
-      newStatus = 'pending';
+    const previousPaid =
+      Number(
+        invoice.amount_paid || 0
+      );
+
+    const newPayment =
+      Number(
+        amount_paid || 0
+      );
+
+    const totalPaid =
+      previousPaid +
+      newPayment;
+
+    const pendingAmount =
+      totalAmount -
+      totalPaid;
+
+    let paymentStatus =
+      'pending';
+
+    if (
+      pendingAmount <= 0
+    ) {
+      paymentStatus =
+        'paid';
+    } else if (
+      totalPaid > 0
+    ) {
+      paymentStatus =
+        'partial';
     }
 
-    // Update payment record
-    const { data, error } = await supabase
-      .from('appointment_payments')
+    // -----------------------------------
+    // Update invoice
+    // -----------------------------------
+
+    const {
+      data: updatedInvoice,
+      error:
+        updateInvoiceError,
+    } = await supabase
+      .from('invoices')
       .update({
-        amount_paid: newAmountPaid,
-        payment_method: payment_method || currentPayment.payment_method,
-        payment_status: newStatus,
-        paid_date: newStatus === 'paid' ? new Date() : currentPayment.paid_date,
-        paid_by_id: userContext.userId,
-        payment_reference: payment_reference || currentPayment.payment_reference,
-        notes: notes || currentPayment.notes,
-        updated_at: new Date(),
+        amount_paid:
+          totalPaid,
+        status:
+          paymentStatus,
+        payment_mode:
+          payment_method ||
+          'cash',
+        paid_date:
+          totalPaid > 0
+            ? new Date()
+                .toISOString()
+                .split('T')[0]
+            : null,
+        updated_at:
+          new Date().toISOString(),
       })
-      .eq('appointment_id', appointment_id)
-      .select('*, appointment:appointments(id, patient_id, staff_id)')
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Error creating payment:', error);
-    return NextResponse.json(
-      { error: 'Failed to record payment' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const userContext = await getSessionFromRequest(request);
-    if (!userContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Only admin can update payments
-    if (!['clinic_admin', 'branch_admin', 'super_admin'].includes(userContext.roleType || '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const paymentId = searchParams.get('id');
-
-    if (!paymentId) {
-      return NextResponse.json(
-        { error: 'Payment ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const updates = await request.json();
-    updates.updated_at = new Date();
-
-    const { data, error } = await supabase
-      .from('appointment_payments')
-      .update(updates)
-      .eq('id', paymentId)
+      .eq(
+        'id',
+        invoice.id
+      )
       .select()
       .single();
 
-    if (error) throw error;
+    if (
+      updateInvoiceError
+    ) {
+      console.error(
+        updateInvoiceError
+      );
 
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Error updating payment:', error);
+      return NextResponse.json(
+        {
+          error:
+            updateInvoiceError.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    // -----------------------------------
+    // Appointment payment history
+    // -----------------------------------
+
+    const {
+      data: payment,
+      error: paymentError,
+    } = await supabase
+      .from(
+        'appointment_payments'
+      )
+      .insert({
+        appointment_id,
+        amount_due:
+          totalAmount,
+        amount_paid:
+          newPayment,
+        payment_status:
+          paymentStatus,
+        payment_method:
+          payment_method ||
+          'cash',
+        payment_reference:
+          payment_reference ||
+          '',
+        notes:
+          notes || '',
+      })
+      .select()
+      .single();
+
+    if (
+      paymentError
+    ) {
+      console.error(
+        paymentError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            paymentError.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      payment,
+      invoice:
+        updatedInvoice,
+      pending_amount:
+        pendingAmount,
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      'Payment API Exception:',
+      error
+    );
+
     return NextResponse.json(
-      { error: 'Failed to update payment' },
-      { status: 500 }
+      {
+        error:
+          'Failed to record payment',
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

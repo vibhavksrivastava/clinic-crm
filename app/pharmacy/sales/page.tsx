@@ -1,6 +1,5 @@
 'use client';
 
-import Header from '@/components/Header';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -16,6 +15,8 @@ import {
   Smartphone,
   BadgeDollarSign,
   RefreshCcw,
+  ShoppingCart,
+  PackageCheck,
 } from 'lucide-react';
 
 interface Sale {
@@ -41,15 +42,20 @@ export default function PharmacySalesPage() {
   const [selectedFilter, setSelectedFilter] =
     useState<FilterType>('all');
 
+  const todayDate = new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
   const fetchSales = async () => {
     try {
       setLoading(true);
 
       const response = await fetch('/api/pharmacy/sales');
 
-      const data = await response.json();
-
-      setSales(Array.isArray(data) ? data : []);
+      const result = await response.json();
+      console.log('Fetched sales:', result);
+      setSales(Array.isArray(result.data) ? result.data : []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -186,45 +192,64 @@ export default function PharmacySalesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB]">
-      <Header />
+    <div className="min-h-screen bg-slate-50">
+      {/* HEADER */}
 
-      <main className="p-4 md:p-6">
-        {/* HEADER */}
-        <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-sm font-semibold text-blue-700">
-              <Receipt size={16} />
-              Pharmacy Billing
+      <main className="max-w-7xl mx-auto px-4 py-8">
+
+
+        {/* ================= HEADER ================= */}
+                {/* HERO */}
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+          <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md">
+                <ShoppingCart size={16} />
+                Pharmacy Billing
+              </div>
+
+              <h1 className="text-4xl font-bold tracking-tight">
+                Sales Management
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-base text-blue-100">
+              Manage Pharmacy Invoices, Customer Billing,
+              Payment Transactions
+              </p>
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900">
-              Sales Management
-            </h1>
+            <Link
+              href="/pharmacy/sales/create"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
+            >
+              <PackageCheck size={18} />
+              Create Sales
+            </Link>
 
-            <p className="mt-2 text-gray-500">
-              Manage pharmacy invoices,
-              customer billing & payment
-              transactions
-            </p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
+
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/pharmacy"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <RefreshCcw size={18} />
+              Back
+            </Link>
+
+                        <button
               onClick={fetchSales}
               className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
             >
               <RefreshCcw size={16} />
               Refresh
             </button>
-
-            <Link
-              href="/pharmacy/sales/create"
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:scale-[1.02]"
-            >
-              <Plus size={18} />
-              Create Sale
-            </Link>
           </div>
         </div>
 
@@ -451,7 +476,7 @@ export default function PharmacySalesPage() {
 
               <div className="hidden items-center gap-2 rounded-2xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 md:flex">
                 <CalendarDays size={16} />
-                {new Date().toLocaleDateString()}
+                {todayDate}
               </div>
             </div>
           </div>

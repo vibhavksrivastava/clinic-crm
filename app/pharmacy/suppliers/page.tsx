@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Header from '@/components/Header';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
@@ -19,6 +18,7 @@ import {
   Loader2,
   ShieldCheck,
   CreditCard,
+  SkipBack,
 } from 'lucide-react';
 
 interface Supplier {
@@ -453,12 +453,9 @@ export default function SuppliersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
-      <main className="p-4 md:p-6">
-      
-        {/* ================= HEADER ================= */}
-        
+      <main className="max-w-7xl mx-auto px-4 py-8">
+              
         {/* HERO */}
         <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
@@ -496,6 +493,15 @@ export default function SuppliersPage() {
             )}
           </div>
         </div>
+  <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">            
+            <div className="text-3xl font-bold mt-2">
+            <Link href="/pharmacy" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+               <SkipBack size={16} />
+               Back
+            </Link>
+            </div>
+          </div>
+
         {/* ================= STATS ================= */}
 
         {!selectedSupplier && (

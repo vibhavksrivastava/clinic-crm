@@ -160,7 +160,7 @@ export default function PharmacyDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Same CRM Header */}
-      <Header />
+      {/* HEADER */}
 
       <main className="p-4 md:p-6">
         {/* Page Header */}

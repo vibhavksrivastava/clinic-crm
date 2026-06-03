@@ -1,8 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import Header from '@/components/Header';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getDashboardUrl } from '@/lib/utils/dashboard';
+
+import {
+  Package,
+  AlertTriangle,
+  IndianRupee,
+  Receipt,
+  Pill,
+  ShoppingCart,
+  Activity,
+  FileText,
+  Truck,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  ChevronRight,
+  Plus,
+  SkipBack,
+} from 'lucide-react';
 
 interface Patient {
   id: string;
@@ -80,6 +99,7 @@ interface EmergencyContact {
 }
 
 export default function PatientsPage() {
+  const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +169,7 @@ export default function PatientsPage() {
 
       const data = await response.json();
       setStaff(Array.isArray(data) ? data : []);
+      console.log("STAFF API RESPONSE:", data);
     } catch (error) {
       console.error(error);
     }
@@ -313,6 +334,15 @@ export default function PatientsPage() {
     }
   };
 
+  const today = new Date();
+
+const formattedDate = today.toLocaleDateString('en-IN', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
   const closeHistory = () => {
     setSelectedPatient(null);
     setPatientHistory(null);
@@ -320,30 +350,63 @@ export default function PatientsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Header />
+      <div className="min-h-screen bg-slate-50">
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+
+         {/* HERO */}
+
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl mb-8">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">
-              Patient Management
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Search patients, manage appointments and history
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Activity size={16} />
+              MediQuick Rx
+            </div>
+
+            <p className="mt-3 text-blue-100 max-w-2xl">
+               Patient Management System to streamline appointments, prescriptions, and history in one place.
             </p>
           </div>
 
-          {!selectedPatient && (
+           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+
+            
+            <div className="text-3xl font-bold mt-2">
+                        {!selectedPatient && (
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg hover:scale-105 transition"
-            >
-              + Add Patient
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Plus size={16} />
+              Add Patient
             </button>
           )}
+            </div>
+          </div>
         </div>
+      </div>
+           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
 
+            
+            <div className="text-3xl font-bold mt-2">
+                        {!selectedPatient && (
+            <button
+              onClick={() => router.push(getDashboardUrl())}        
+              //onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+               <SkipBack size={16} />
+               Dashboard
+            </button>
+          )}
+            </div>
+          </div>
+
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {showForm && (
           <div className="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-gray-200">
             <h2 className="text-2xl font-bold mb-6">
@@ -880,6 +943,7 @@ export default function PatientsPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

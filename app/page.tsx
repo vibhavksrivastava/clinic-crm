@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Header from '@/components/Header';
+//import Header from '@/components/Header';
 import { useState, useEffect } from 'react';
 
 interface DashboardStats {
@@ -576,7 +576,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <Header />
+      {/*<Header />*/}
 
       {/* TOP SECTION */}
 

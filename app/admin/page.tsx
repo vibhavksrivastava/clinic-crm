@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Link from 'next/link';
@@ -27,6 +27,7 @@ interface Organization {
 
 export default function AdminDashboard() {
   const router = useRouter();
+
   const [stats, setStats] = useState<DashboardStats>({
     totalOrganizations: 0,
     totalBranches: 0,
@@ -35,44 +36,79 @@ export default function AdminDashboard() {
     totalPatients: 0,
     totalAppointments: 0,
   });
+
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
   const [error, setError] = useState('');
 
+  /**
+   * 1. AUTH CHECK (IMPORTANT FIX)
+   */
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    fetchDashboardData();
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          router.replace('/login');
+          return;
+        }
+
+        setAuthChecking(false);
+      } catch (err) {
+        router.replace('/login');
+      }
+    };
+
+    checkAuth();
   }, [router]);
+
+  /**
+   * 2. LOAD DASHBOARD DATA
+   */
+  useEffect(() => {
+    if (authChecking) return;
+    fetchDashboardData();
+  }, [authChecking]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
       const response = await fetch('/api/admin/dashboard', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+        credentials: 'include',
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setOrganizations(data.organizations);
-      } else if (response.status === 401) {
-        window.location.href = '/login';
-      } else {
-        setError('Failed to load dashboard data');
+      if (response.status === 401) {
+        router.push('/login');
+        return;
       }
+
+      const data = await response.json();
+
+      setStats(data.stats);
+      setOrganizations(data.organizations);
     } catch (err) {
-      setError('Error loading dashboard: ' + (err as Error).message);
+      setError('Error loading dashboard');
     } finally {
       setLoading(false);
     }
   };
 
-  const StatCard = ({ label, value, icon }: { label: string; value: number; icon: string }) => (
+  const StatCard = ({
+    label,
+    value,
+    icon,
+  }: {
+    label: string;
+    value: number;
+    icon: string;
+  }) => (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between">
         <div>
@@ -84,158 +120,110 @@ export default function AdminDashboard() {
     </div>
   );
 
+  /**
+   * LOADING STATE
+   */
+  if (authChecking) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Checking authentication...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      {/*<Header />*/}
 
       <main className="max-w-7xl mx-auto py-8 px-4">
-        {/* Page Header */}
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage all clinics, branches, and system configuration</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Super Admin Dashboard
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Manage clinics, branches, and system configuration
+          </p>
         </div>
 
+        {/* Error */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-700">❌ {error}</p>
+          <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-lg">
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
-        {/* Dashboard Stats */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard label="Total Clinics" value={stats.totalOrganizations} icon="🏥" />
           <StatCard label="Total Branches" value={stats.totalBranches} icon="📍" />
           <StatCard label="Active Users" value={stats.activeUsers} icon="👥" />
-          <StatCard label="Total Patients" value={stats.totalPatients} icon="🧑‍⚕️" />
-          <StatCard label="Today's Appointments" value={stats.totalAppointments} icon="📅" />
+          <StatCard label="Patients" value={stats.totalPatients} icon="🧑‍⚕️" />
+          <StatCard label="Appointments" value={stats.totalAppointments} icon="📅" />
           <StatCard label="System Users" value={stats.totalUsers} icon="🔑" />
         </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Link
-              href="/admin/organizations"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">🏥 Manage Clinics</p>
-                <p className="text-sm text-gray-600">Create, edit, delete organizations</p>
-              </div>
+          <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <Link href="/admin/organizations" className="p-4 border rounded hover:bg-blue-50">
+              🏥 Clinics
             </Link>
 
-            <Link
-              href="/admin/branches"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">📍 Manage Branches</p>
-                <p className="text-sm text-gray-600">Handle clinic locations</p>
-              </div>
+            <Link href="/admin/branches" className="p-4 border rounded hover:bg-green-50">
+              📍 Branches
             </Link>
 
-            <Link
-              href="/admin/staff"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">👥 Manage Staff</p>
-                <p className="text-sm text-gray-600">Users, roles, permissions</p>
-              </div>
+            <Link href="/admin/staff" className="p-4 border rounded hover:bg-purple-50">
+              👥 Staff
             </Link>
 
-            <Link
-              href="/admin/roles"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">🎭 Manage Roles</p>
-                <p className="text-sm text-gray-600">Create custom roles</p>
-              </div>
+            <Link href="/admin/roles" className="p-4 border rounded hover:bg-indigo-50">
+              🎭 Roles
             </Link>
 
-            <Link
-              href="/admin/audit-logs"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">📋 Audit Logs</p>
-                <p className="text-sm text-gray-600">View system activity</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/settings"
-              className="flex items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">⚙️ Settings</p>
-                <p className="text-sm text-gray-600">System configuration</p>
-              </div>
+            <Link href="/admin/settings" className="p-4 border rounded hover:bg-orange-50">
+              ⚙️ Settings
             </Link>
           </div>
         </div>
 
-        {/* Recent Organizations */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Recent Clinics</h2>
+        {/* Organizations */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-4 border-b">
+            <h2 className="text-lg font-bold">Recent Clinics</h2>
           </div>
+
           {loading ? (
-            <div className="p-6 text-center">
-              <p className="text-gray-600">Loading...</p>
-            </div>
+            <div className="p-6">Loading...</div>
           ) : organizations.length === 0 ? (
-            <div className="p-6 text-center">
-              <p className="text-gray-600 mb-4">No clinics yet</p>
-              <Link
-                href="/admin/organizations?action=create"
-                className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                Create First Clinic
-              </Link>
-            </div>
+            <div className="p-6">No clinics found</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Clinic Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Plan</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Branches</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Staff</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-3 text-left">Name</th>
+                  <th className="p-3 text-left">Email</th>
+                  <th className="p-3 text-left">Plan</th>
+                  <th className="p-3 text-left">Branches</th>
+                  <th className="p-3 text-left">Users</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {organizations.map((org) => (
+                  <tr key={org.id} className="border-t">
+                    <td className="p-3">{org.name}</td>
+                    <td className="p-3">{org.email}</td>
+                    <td className="p-3">{org.subscription_plan}</td>
+                    <td className="p-3">{org.branches_count || 0}</td>
+                    <td className="p-3">{org.users_count || 0}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {organizations.map((org) => (
-                    <tr key={org.id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900">{org.name}</p>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{org.email}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                          {org.subscription_plan}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{org.branches_count || 0}</td>
-                      <td className="px-6 py-4 text-gray-600">{org.users_count || 0}</td>
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/admin/organizations/${org.id}`}
-                          className="text-blue-600 hover:text-blue-900 font-medium"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </main>

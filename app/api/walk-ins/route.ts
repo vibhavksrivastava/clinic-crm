@@ -101,7 +101,9 @@ export async function POST(request: NextRequest) {
 
     // Check if user has permission to create walk-ins (receptionist, doctor, admin)
     const allowedRoles = ['receptionist', 'doctor', 'clinic_admin', 'branch_admin', 'super_admin'];
-    if (!allowedRoles.includes(userContext.roleType)) {
+    const roleType = userContext.roleType ?? '';
+
+    if (!allowedRoles.includes(roleType)) {
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions to create walk-in' },
         { status: 403 }
@@ -493,7 +495,7 @@ export async function DELETE(request: NextRequest) {
 
     // Only admins can delete walk-ins
     const adminRoles = ['clinic_admin', 'branch_admin', 'super_admin'];
-    if (!adminRoles.includes(userContext.roleType)) {
+    if (!adminRoles.includes(userContext.roleType as string)) {
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions to delete walk-in' },
         { status: 403 }

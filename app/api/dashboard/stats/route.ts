@@ -14,8 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const organizationId = userContext.organizationId;
-    const userId = userContext.userId;
-    const roleType = userContext.roleType;
+    const roleType = userContext.roleType ?? 'user';
 
     // Get today's date range in local time
     const now = new Date();

@@ -1,87 +1,247 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/client';
-import { getUserContext, isSuperAdmin, unauthorizedResponse } from '@/lib/db/access-control';
+import {
+  getUserContext,
+  isSuperAdmin,
+  unauthorizedResponse,
+} from '@/lib/db/access-control';
 
-/**
- * GET /api/admin/dashboard
- * Get dashboard statistics (super admin sees all, others see only their organization)
- */
+
+type OrganizationRow = {
+  id: string;
+  name?: string;
+  created_at?: string;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const userContext = await getUserContext(request);
+
     if (!userContext) {
-      return unauthorizedResponse();
-    }
+  return unauthorizedResponse();
+}
 
-    // Build query filters based on role
+if (
+  ![
+    'super_admin',
+    'clinic_admin',
+    'branch_admin',
+  ].includes(userContext.roleType)
+) {
+  return NextResponse.json(
+    {
+      error: 'Access denied',
+    },
+    { status: 403 }
+  );
+}
+ 
     const isSuperAdminUser = isSuperAdmin(userContext);
-    const userOrgId = userContext.organizationId;
+    const orgId = userContext.organizationId;
 
-    // Get statistics
-    const orgsQuery = isSuperAdminUser
-      ? supabase.from('organizations').select('id', { count: 'exact', head: true })
-      : supabase.from('organizations').select('id', { count: 'exact', head: true }).eq('id', userOrgId);
+    // Base filter
+    const orgFilter = isSuperAdminUser
+      ? {}
+      : { organization_id: orgId };
 
-    const branchesQuery = isSuperAdminUser
-      ? supabase.from('branches').select('id', { count: 'exact', head: true })
-      : supabase.from('branches').select('id', { count: 'exact', head: true }).eq('organization_id', userOrgId);
+    // -----------------------------
+    // Dashboard stats
+    // -----------------------------
+    const [
+      orgsRes,
+      branchesRes,
+      usersRes,
+      patientsRes,
+      appointmentsRes,
+    ] = await Promise.all([
+      isSuperAdminUser
+        ? supabase
+            .from('organizations')
+            .select('*', {
+              count: 'exact',
+              head: true,
+            })
+        : supabase
+            .from('organizations')
+            .select('*', {
+              count: 'exact',
+              head: true,
+            })
+            .eq('id', orgId),
 
-    const usersQuery = isSuperAdminUser
-      ? supabase.from('users').select('id', { count: 'exact', head: true })
-      : supabase.from('users').select('id', { count: 'exact', head: true }).eq('organization_id', userOrgId);
+      supabase
+        .from('branches')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        })
+        .match(orgFilter),
 
-    const patientsQuery = isSuperAdminUser
-      ? supabase.from('patients').select('id', { count: 'exact', head: true })
-      : supabase.from('patients').select('id', { count: 'exact', head: true }).eq('organization_id', userOrgId);
+      supabase
+        .from('users')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        })
+        .match(orgFilter),
 
-    const appointmentsQuery = isSuperAdminUser
-      ? supabase.from('appointments').select('id', { count: 'exact', head: true })
-      : supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('organization_id', userOrgId);
+      supabase
+        .from('patients')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        })
+        .match(orgFilter),
 
-    const [orgsRes, branchesRes, usersRes, patientsRes, appointmentsRes] = await Promise.all([
-      orgsQuery,
-      branchesQuery,
-      usersQuery,
-      patientsQuery,
-      appointmentsQuery,
+      supabase
+        .from('appointments')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        })
+        .match(orgFilter),
     ]);
 
-    // Get organizations with counts
-    let organizationsQuery = supabase.from('organizations').select('*').order('created_at', { ascending: false }).limit(10);
+    // -----------------------------
+    // Organizations list
+    // -----------------------------
+    let organizationsQuery = supabase
+      .from('organizations')
+      .select('*')
+      .order('created_at', {
+        ascending: false,
+      })
+      .limit(10);
 
     if (!isSuperAdminUser) {
-      organizationsQuery = organizationsQuery.eq('id', userOrgId);
+      organizationsQuery =
+        organizationsQuery.eq(
+          'id',
+          orgId
+        );
     }
 
-    const { data: organizations } = await organizationsQuery;
+    const {
+      data: organizations,
+      error: orgError,
+    } = await organizationsQuery;
 
-    // Count branches and users per organization
-    let orgsWithCounts = organizations || [];
-    for (let org of orgsWithCounts) {
-      const [{ count: branchCount }, { count: userCount }] = await Promise.all([
+    if (orgError) {
+      throw orgError;
+    }
+
+    // -----------------------------
+    // Counts
+    // -----------------------------
+    const orgIds = (
+      organizations || []
+    ).map(
+      (o: OrganizationRow) => o.id
+    );
+
+    let branchCounts: any[] = [];
+    let userCounts: any[] = [];
+
+    if (orgIds.length > 0) {
+      const [
+        branchesAgg,
+        usersAgg,
+      ] = await Promise.all([
         supabase
           .from('branches')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', org.id),
-        supabase.from('users').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
+          .select('organization_id')
+          .in(
+            'organization_id',
+            orgIds
+          ),
+
+        supabase
+          .from('users')
+          .select('organization_id')
+          .in(
+            'organization_id',
+            orgIds
+          ),
       ]);
-      org.branches_count = branchCount || 0;
-      org.users_count = userCount || 0;
+
+      branchCounts =
+        branchesAgg.data || [];
+      userCounts =
+        usersAgg.data || [];
     }
 
+    const branchMap =
+      new Map<string, number>();
+    const userMap =
+      new Map<string, number>();
+
+    branchCounts.forEach(
+      (b: any) => {
+        branchMap.set(
+          b.organization_id,
+          (branchMap.get(
+            b.organization_id
+          ) || 0) + 1
+        );
+      }
+    );
+
+    userCounts.forEach(
+      (u: any) => {
+        userMap.set(
+          u.organization_id,
+          (userMap.get(
+            u.organization_id
+          ) || 0) + 1
+        );
+      }
+    );
+
+    const orgsWithCounts = (
+      organizations || []
+    ).map((org: any) => ({
+      ...org,
+      branches_count:
+        branchMap.get(org.id) || 0,
+      users_count:
+        userMap.get(org.id) || 0,
+    }));
+
+    // -----------------------------
+    // Response
+    // -----------------------------
     return NextResponse.json({
+      success: true,
       stats: {
-        totalOrganizations: orgsRes.count || 0,
-        totalBranches: branchesRes.count || 0,
-        totalUsers: usersRes.count || 0,
-        activeUsers: usersRes.count || 0,
-        totalPatients: patientsRes.count || 0,
-        totalAppointments: appointmentsRes.count || 0,
+        totalOrganizations:
+          orgsRes.count || 0,
+        totalBranches:
+          branchesRes.count || 0,
+        totalUsers:
+          usersRes.count || 0,
+        activeUsers:
+          usersRes.count || 0,
+        totalPatients:
+          patientsRes.count || 0,
+        totalAppointments:
+          appointmentsRes.count || 0,
       },
-      organizations: orgsWithCounts,
+      organizations:
+        orgsWithCounts,
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
-    return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
+    console.error(
+      'Dashboard error:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          'Failed to fetch dashboard data',
+      },
+      { status: 500 }
+    );
   }
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Header from '@/components/Header';
 import {
   PackageCheck,
   Search,
@@ -228,10 +227,10 @@ export default function PurchaseOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <Header />
+    <div className="min-h-screen bg-slate-50">
 
-      <main className="p-4 md:p-6">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+
         {/* ================= HEADER ================= */}
                 {/* HERO */}
         <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
@@ -267,6 +266,16 @@ export default function PurchaseOrdersPage() {
 
 
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/pharmacy"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <RefreshCcw size={18} />
+              Back
+            </Link>
+          </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <button 

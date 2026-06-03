@@ -1,6 +1,5 @@
 'use client';
 
-import Header from '@/components/Header';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDashboardUrl } from '@/lib/utils/dashboard';
@@ -19,6 +18,7 @@ import {
   ShieldAlert,
   RefreshCw,
   Eye,
+  Link,
 } from 'lucide-react';
 
 interface InventoryItem {
@@ -318,10 +318,42 @@ export default function InventoryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb]">
-      <Header />
+    <div className="min-h-screen bg-slate-50">
+      <main className="max-w-7xl mx-auto px-4 py-8">
 
-      <main className="p-4 md:p-6">
+      
+        {/* ================= HEADER ================= */}
+                {/* HERO */}
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+          <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md">
+                Pharmacy Inventory
+              </div>
+
+              <h1 className="text-4xl font-bold tracking-tight">
+                Pharmacy Inventory
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-base text-blue-100">
+              Advanced stock monitoring, batch tracking & inventory analytics
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                router.push(
+                  '/pharmacy/purchase-orders/create'
+                )
+              }
+              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:scale-[1.02]"
+            >
+              <Package size={17} />
+              Create Purchase Order
+            </button>
+          </div>
+        </div>
         {/* HEADER */}
         <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -333,16 +365,6 @@ export default function InventoryPage() {
             >
               ← Back To Dashboard
             </button>
-
-            <h1 className="text-3xl font-bold text-slate-900">
-              Pharmacy Inventory
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Advanced stock monitoring,
-              batch tracking & inventory
-              analytics
-            </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -352,18 +374,6 @@ export default function InventoryPage() {
             >
               <RefreshCw size={17} />
               Refresh
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  '/pharmacy/purchase-orders/create'
-                )
-              }
-              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:scale-[1.02]"
-            >
-              <Package size={17} />
-              Create Purchase Order
             </button>
           </div>
         </div>

@@ -1,241 +1,392 @@
 import { supabase } from '@/lib/db/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
-function verifyToken(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
-  return authHeader?.startsWith('Bearer ') || false;
-}
+type StaffUser = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  specialization?: string;
+  organization_id: string;
+  branch_id?: string;
+  role_id?: string;
+  role?: {
+    role_type: string;
+    name: string;
+  };
+};
 
-export async function GET(request: NextRequest) {
+type StaffResponse = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+};
+/* =========================================
+   GET STAFF
+========================================= */
+export async function GET(req: NextRequest) {
   try {
-    if (!verifyToken(request)) {
+    const session = await getSessionFromRequest(req);
+
+    if (!session) {
       return NextResponse.json(
-        { error: 'Unauthorized: No token provided' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const organizationId = searchParams.get('organizationId');
-    const branchId = searchParams.get('branchId');
-    const role = searchParams.get('role');
-    
-    console.log('📥 Staff API Request:', {
-      id,
-      organizationId,
-      branchId,
-      role,
-      fullUrl: request.url
-    });
+    const { searchParams } = new URL(req.url);
+    const roleFilter = searchParams.get('role');
 
-    // If organization_id is provided, fetch from users table (multi-tenant approach)
-    if (organizationId) {
-      console.log('🔍 Querying users table with organizationId:', organizationId);
-      
-      let query = supabase
-        .from('users')
-        .select('id, first_name, last_name, email, phone, specialization, organization_id, branch_id, role_id, roles(id, role_type, name)');
-      
-      query = query.eq('organization_id', organizationId);
-      
-      if (branchId) {
-        console.log('📍 Adding branch filter:', branchId);
-        query = query.eq('branch_id', branchId);
-      }
-      
-      // Filter by role type if specified (e.g., role=doctor)
-      // This ensures we only get users with the doctor role via the role_id relationship
-      if (role) {
-        console.log('👨‍⚕️ Adding role filter:', role);
-        query = query.eq('roles.role_type', role);
-      } else {
-        // Default to doctors if no role specified
-        console.log('👨‍⚕️ Defaulting to doctor role');
-        query = query.eq('roles.role_type', 'doctor');
-      }
-      
-      const { data, error } = await query.order('first_name', { ascending: true });
-      
-      if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
-      }
-      
-      console.log('✅ Raw users data returned:', data?.length || 0, 'records');
-      
-      // Transform users data to match staff table structure
-      // Filter to ensure role_id exists and role_type matches (extra safety check)
-      const transformedData = (data as any[])
-        ?.filter((user: any) => user.role_id && user.roles?.role_type === (role || 'doctor'))
-        ?.map((user: any) => ({
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          role: user.roles?.role_type || 'doctor',
-          specialization: user.specialization,
-          organization_id: user.organization_id,
-          branch_id: user.branch_id,
-          role_id: user.role_id,
-          user_id: user.id,
-        })) || [];
-      
-      console.log('✅ Transformed staff:', transformedData.length, 'doctors');
-      transformedData.forEach(doc => {
-        console.log(`  - ${doc.first_name} ${doc.last_name} (${doc.role})`);
-      });
-      
-      return NextResponse.json(transformedData);
+    let query = supabase
+      .from('users')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        specialization,
+        organization_id,
+        branch_id,
+        role_id,
+        role:roles!users_role_id_fkey (
+          role_type,
+          name
+        )
+      `)
+      .eq(
+        'organization_id',
+        session.organizationId
+      );
+
+    // Optional branch filter
+    if (session.branchId) {
+      query = query.eq(
+        'branch_id',
+        session.branchId
+      );
     }
 
-    // For backward compatibility, fetch from staff table if no organization_id
-    console.log('⚠️ No organizationId provided - falling back to staff table');
-    
-    if (id) {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const { data, error } = await query;
 
-      if (error) throw error;
-      return NextResponse.json(data);
+    if (error) {
+      console.error(
+        'STAFF API ERROR:',
+        error
+      );
+
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
-    let query = supabase.from('staff').select('*');
-    
-    if (branchId) {
-      query = query.eq('branch_id', branchId);
-    }
-    
-    if (role) {
-      query = query.eq('role', role);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
+    let formatted: StaffResponse[] = (
+  data || []
+).map((u: any) => ({
+  id: u.id,
+  first_name: u.first_name,
+  last_name: u.last_name,
+  email: u.email,
+  role: u.role?.role_type || '',
+}));
 
-    if (error) throw error;
+if (roleFilter) {
+  formatted = formatted.filter(
+    (u: StaffResponse) =>
+      u.role === roleFilter
+  );
+}
     
-    console.log('✅ Staff table returned:', data?.length || 0, 'records');
-    
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Error fetching staff:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch staff';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // Filter doctor / pharmacist / etc
+
+    if (roleFilter) {
+  formatted = formatted.filter(
+    (u: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      role: string;
+    }) =>
+      u.role === roleFilter
+  );
+}
+
+    return NextResponse.json(
+      formatted
+    );
+  } catch (err: any) {
+    console.error(
+      'GET STAFF ERROR:',
+      err
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          err.message ||
+          'Server error',
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+/* =========================================
+   CREATE STAFF
+========================================= */
+export async function POST(
+  request: NextRequest
+) {
   try {
-    if (!verifyToken(request)) {
+    const userContext =
+      await getSessionFromRequest(
+        request
+      );
+
+    if (!userContext) {
       return NextResponse.json(
-        { error: 'Unauthorized: No token provided' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const { first_name, last_name, email, role, phone, specialization, organization_id, branch_id } = await request.json();
+    const body =
+      await request.json();
 
-    if (!first_name || !last_name || !role) {
-      return NextResponse.json({ error: 'First name, last name, and role are required' }, { status: 400 });
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      specialization,
+      role_id,
+    } = body;
+
+    if (
+      !first_name ||
+      !last_name ||
+      !role_id
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'first_name, last_name and role_id are required',
+        },
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await supabase
-      .from('staff')
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('users')
       .insert({
         first_name,
         last_name,
         email,
-        role,
         phone,
         specialization,
-        organization_id,
-        branch_id,
+        role_id,
+        organization_id:
+          userContext.organizationId,
+        branch_id:
+          userContext.branchId ||
+          null,
+        user_status:
+          'active',
       })
       .select()
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
+
+    return NextResponse.json(
+      data,
+      { status: 201 }
+    );
   } catch (error) {
-    console.error('Error creating staff:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to create staff';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    console.error(
+      'Error creating staff:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create staff',
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(request: NextRequest) {
+/* =========================================
+   UPDATE STAFF
+========================================= */
+export async function PUT(
+  request: NextRequest
+) {
   try {
-    if (!verifyToken(request)) {
+    const userContext =
+      await getSessionFromRequest(
+        request
+      );
+
+    if (!userContext) {
       return NextResponse.json(
-        { error: 'Unauthorized: No token provided' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const { searchParams } =
+      new URL(request.url);
+
+    const id =
+      searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'Staff ID is required' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            'Staff ID required',
+        },
+        { status: 400 }
+      );
     }
 
-    const { first_name, last_name, email, role, phone, specialization, organization_id, branch_id } = await request.json();
+    const body =
+      await request.json();
 
-    const { data, error } = await supabase
-      .from('staff')
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      specialization,
+      role_id,
+    } = body;
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('users')
       .update({
         first_name,
         last_name,
         email,
-        role,
         phone,
         specialization,
-        organization_id,
-        branch_id,
-        updated_at: new Date(),
+        role_id,
+        updated_at:
+          new Date().toISOString(),
       })
       .eq('id', id)
+      .eq(
+        'organization_id',
+        userContext.organizationId
+      )
       .select()
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data);
+
+    return NextResponse.json(
+      data
+    );
   } catch (error) {
-    console.error('Error updating staff:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update staff';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    console.error(
+      'Error updating staff:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to update staff',
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest) {
+/* =========================================
+   DELETE STAFF
+========================================= */
+export async function DELETE(
+  request: NextRequest
+) {
   try {
-    if (!verifyToken(request)) {
+    const userContext =
+      await getSessionFromRequest(
+        request
+      );
+
+    if (!userContext) {
       return NextResponse.json(
-        { error: 'Unauthorized: No token provided' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const { searchParams } =
+      new URL(request.url);
+
+    const id =
+      searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'Staff ID is required' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            'Staff ID required',
+        },
+        { status: 400 }
+      );
     }
 
-    const { error } = await supabase
-      .from('staff')
-      .delete()
-      .eq('id', id);
+    const { error } =
+      await supabase
+        .from('users')
+        .delete()
+        .eq('id', id)
+        .eq(
+          'organization_id',
+          userContext.organizationId
+        );
 
     if (error) throw error;
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({
+      success: true,
+    });
   } catch (error) {
-    console.error('Error deleting staff:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to delete staff';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    console.error(
+      'Error deleting staff:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete staff',
+      },
+      { status: 500 }
+    );
   }
 }

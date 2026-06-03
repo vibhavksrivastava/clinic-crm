@@ -29,6 +29,9 @@ import {
   FileText,
   Pill,
   Loader2,
+  RefreshCcw,
+  Link,
+  PackageCheck,
 } from 'lucide-react';
 
 type Product = {
@@ -340,7 +343,7 @@ export default function CreateSalePage() {
 
       const data =
         await response.json();
-
+      console.log('Create response:', data);
       if (!response.ok) {
         throw new Error(
           data.error ||
@@ -348,8 +351,13 @@ export default function CreateSalePage() {
         );
       }
 
+            if (!data?.sale?.id) {
+        console.error('Sale ID missing', data);
+        return;
+      }
+
       router.push(
-        `/pharmacy/sales/${data.id}/view`
+        `/pharmacy/sales/${data.sale.id}/view`
       );
     } catch (error) {
       console.error(error);
@@ -363,10 +371,14 @@ export default function CreateSalePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <Header />
+    <div className="min-h-screen bg-slate-50">
 
-      <main className="p-4 md:p-6">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+
+
+        {/* ================= HEADER ================= */}
+                {/* HERO */}      
+
         {/* PAGE HEADER */}
         <div className="mb-6 rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 p-6 text-white shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -428,6 +440,15 @@ export default function CreateSalePage() {
             </div>
           </div>
         </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/pharmacy"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Back
+            </Link>
+          </div>
 
         <div className="grid gap-6 xl:grid-cols-[1fr_430px]">
           {/* LEFT SIDE */}

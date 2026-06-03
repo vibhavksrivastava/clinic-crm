@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import Header from '@/components/Header';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDashboardUrl } from '@/lib/utils/dashboard';
+import { Plus, SkipBack } from 'lucide-react';
+import { Activity } from 'lucide-react';
+
 
 interface Patient {
   id: string;
@@ -16,84 +18,107 @@ interface Patient {
   address?: string;
 }
 
-interface Staff {
+interface Doctor {
   id: string;
   first_name: string;
   last_name: string;
   specialization?: string;
 }
 
-interface ReminderMessage {
-  appointment_id: string;
-  type: 'doctor' | 'patient';
-  title: string;
-  message: string;
-  appointment_date: string;
-  patient?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email?: string;
-    phone?: string;
-  };
-  doctor?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    specialization?: string;
-  };
+interface Prescription {
+  id: string;
+  status?: string;
+  medications?: Record<string, unknown>;
+}
+
+interface AppointmentPayment {
+  amount_paid: number;
+  amount_due: number;
+  payment_status: string;
 }
 
 interface Appointment {
   id: string;
   patient_id: string;
-  staff_id: string;
+  user_id: string;
   appointment_date: string;
   duration_minutes: number;
-  status: 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+  status:
+    | 'scheduled'
+    | 'ongoing'
+    | 'completed'
+    | 'cancelled';
   appointment_type: string;
-  fee_amount: number | null;
-  notes: string;
+  fee_amount?: number | null;
+  notes?: string;
+
   patients?: Patient;
-  staff?: Staff;
-  invoice?: {
+
+  users?: {
     id: string;
-    amount: number;
-    amount_paid: number;
-    status: string;
-    payment_mode?: string;
+    first_name: string;
+    last_name: string;
   };
-  prescriptions?: Array<{
-    id: string;
-    medications: any;
-    status: string;
-  }>;
+
+  appointment_payments?: AppointmentPayment[];
+
+  prescriptions?: Prescription[];
 }
 
 interface UserContext {
-  roleType: string;
   userId: string;
-  organizationId?: string;
-  branchId?: string;
+  roleType: string;
+  permissions?: string[];
 }
 
 export default function AppointmentsPage() {
   const router = useRouter();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [invoices, setInvoices] = useState<{ [key: string]: any }>({});
-  const [loading, setLoading] = useState(true);
-  const [userContext, setUserContext] = useState<UserContext | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [appointmentView, setAppointmentView] = useState<'scheduled' | 'ongoing' | 'completed' | 'cancelled'>('scheduled');
-  const [schedulingConflict, setSchedulingConflict] = useState<string | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<Appointment | null>(null);
-  const [showPatientDetails, setShowPatientDetails] = useState(false);
+
+  const [dashboardUrl] = useState(
+    getDashboardUrl()
+  );
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [appointments, setAppointments] =
+    useState<Appointment[]>([]);
+
+  const [patients, setPatients] =
+    useState<Patient[]>([]);
+
+  const [doctors, setDoctors] =
+    useState<Doctor[]>([]);
+
+  const [userContext, setUserContext] =
+    useState<UserContext | null>(null);
+
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+
+  const [appointmentView, setAppointmentView] =
+    useState<
+      | 'scheduled'
+      | 'ongoing'
+      | 'completed'
+      | 'cancelled'
+    >('scheduled');
+
+  const [selectedPatient, setSelectedPatient] =
+    useState<Appointment | null>(null);
+
+  const [
+    showPatientDetails,
+    setShowPatientDetails,
+  ] = useState(false);
+
+  // Schedule Form
   const [formData, setFormData] = useState({
     patient_id: '',
-    staff_id: '',
+    user_id: '',
     appointment_date: '',
     appointment_time: '',
     duration_minutes: '30',
@@ -101,2156 +126,2453 @@ export default function AppointmentsPage() {
     notes: '',
   });
 
-  // Doctor-specific states
-  const [showCompletionForm, setShowCompletionForm] = useState(false);
-  const [completingAppointmentId, setCompletingAppointmentId] = useState<string | null>(null);
-  const [completionData, setCompletionData] = useState({
-    fee_amount: '',
-    notes_from_doctor: '',
-  });
+  // Completion
+  const [
+    showCompletionForm,
+    setShowCompletionForm,
+  ] = useState(false);
 
-  // Receptionist-specific states
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentAppointmentId, setPaymentAppointmentId] = useState<string | null>(null);
-  const [pendingAmount, setPendingAmount] = useState<number>(0);
-  const [paymentData, setPaymentData] = useState({
-    amount_paid: '',
-    payment_method: 'cash',
-    payment_reference: '',
-    notes: '',
-  });
+  const [
+    completingAppointmentId,
+    setCompletingAppointmentId,
+  ] = useState<string | null>(null);
 
-  // Prescription-specific states
-  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
-  const [prescriptionAppointmentId, setPrescriptionAppointmentId] = useState<string | null>(null);
-  const [prescriptionMedicines, setPrescriptionMedicines] = useState([
-    { id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }
-  ]);
-  const [prescriptionData, setPrescriptionData] = useState({
-    notes: '',
-  });
-  const [appointmentPrescriptions, setAppointmentPrescriptions] = useState<any[]>([]);
-  const [showViewPrescriptions, setShowViewPrescriptions] = useState(false);
-  const [viewPrescriptionsId, setViewPrescriptionsId] = useState<string | null>(null);
+  const [completionData, setCompletionData] =
+    useState({
+      fee_amount: '',
+      notes_from_doctor: '',
+    });
 
-  // Doctor vitals-specific states
-  const [showVitalsForm, setShowVitalsForm] = useState(false);
-  const [vitalsAppointmentId, setVitalsAppointmentId] = useState<string | null>(null);
-  const [vitalsData, setVitalsData] = useState({
-    blood_pressure_systolic: '',
-    blood_pressure_diastolic: '',
-    heart_rate: '',
-    temperature: '',
-    oxygen_saturation: '',
-    weight: '',
-    height: '',
-    temperature_unit: 'C' as 'C' | 'F',
-    weight_unit: 'kg' as 'kg' | 'lbs',
-    height_unit: 'cm' as 'cm' | 'inches',
-  });
+  // Payment
+  const [showPaymentForm, setShowPaymentForm] =
+    useState(false);
 
-  const [doctorReminders, setDoctorReminders] = useState<ReminderMessage[]>([]);
-  const [doctorRemindersLoading, setDoctorRemindersLoading] = useState(false);
-  const [dashboardUrl, setDashboardUrl] = useState<string>('/dashboard');
+  const [
+    paymentAppointmentId,
+    setPaymentAppointmentId,
+  ] = useState<string | null>(null);
 
-  useEffect(() => {
-    setDashboardUrl(getDashboardUrl());
-  }, []);
+  const [pendingAmount, setPendingAmount] =
+    useState(0);
 
-  useEffect(() => {
-    getUserRole();
-  }, []);
+  const [paymentData, setPaymentData] =
+    useState({
+      amount_paid: '',
+      payment_method: 'cash',
+      payment_reference: '',
+      notes: '',
+    });
 
-  // Fetch data when userContext is loaded
-  useEffect(() => {
-    if (userContext?.organizationId) {
-      fetchData();
-    }
-  }, [userContext]);
+  // Vitals
+  const [showVitalsForm, setShowVitalsForm] =
+    useState(false);
 
-  useEffect(() => {
-    const fetchDoctorReminders = async () => {
-      if (userContext?.roleType !== 'doctor') return;
-      setDoctorRemindersLoading(true);
-      try {
-        const res = await fetch('/api/appointments/reminders?type=doctor');
-        if (res.ok) {
-          const data = await res.json();
-          setDoctorReminders(Array.isArray(data.reminders) ? data.reminders : []);
-        }
-      } catch (error) {
-        console.error('Error fetching doctor reminders:', error);
-      } finally {
-        setDoctorRemindersLoading(false);
-      }
-    };
+  const [
+    vitalsAppointmentId,
+    setVitalsAppointmentId,
+  ] = useState<string | null>(null);
 
-    fetchDoctorReminders();
-  }, [userContext]);
+  const [vitalsData, setVitalsData] =
+    useState({
+      blood_pressure_systolic: '',
+      blood_pressure_diastolic: '',
+      heart_rate: '',
+      temperature: '',
+      oxygen_saturation: '',
+      weight: '',
+      height: '',
+      temperature_unit: 'C' as 'C' | 'F',
+      weight_unit: 'kg' as 'kg' | 'lbs',
+      height_unit: 'cm' as 'cm' | 'inches',
+    });
 
+  // --------------------------------
+  // AUTH ME
+  // --------------------------------
   const getUserRole = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        // Parse JWT to get user info
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          console.log('📋 JWT Payload:', payload);
-          const context = {
-            roleType: payload.role_type || payload.roleType,
-            userId: payload.sub || payload.userId,
-            organizationId: payload.organizationId || payload.organization_id,
-            branchId: payload.branchId || payload.branch_id,
-          };
-          console.log('👤 User Context:', context);
-          setUserContext(context);
-        }
-      } else {
-        console.error('❌ No auth token found');
+      const res = await fetch(
+        '/api/auth/me'
+      );
+
+      const data = await res.json();
+
+      console.log(
+        'AUTH ME RESPONSE:',
+        data
+      );
+
+      if (
+        data.authenticated &&
+        data.user
+      ) {
+        const role =
+          data.user.role_type ||
+          data.user.roleType ||
+          '';
+
+        console.log(
+          'ROLE FOUND:',
+          role
+        );
+
+        setUserContext({
+          userId: data.user.id,
+          roleType: role,
+          permissions:
+            data.user.permissions || [],
+        });
       }
     } catch (error) {
-      console.error('Error getting user role:', error);
+      console.error(
+        'Auth fetch error:',
+        error
+      );
     }
   };
 
+  // --------------------------------
+  // FETCH DATA
+  // --------------------------------
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Build staff query with organization and branch filters
-      let staffUrl = '/api/staff?role=doctor';
-      if (userContext?.organizationId) {
-        staffUrl += `&organizationId=${userContext.organizationId}`;
-        console.log('✓ Using organizationId:', userContext.organizationId);
-      } else {
-        console.warn('⚠️ organizationId NOT set in userContext');
-      }
-      if (userContext?.branchId) {
-        staffUrl += `&branchId=${userContext.branchId}`;
-        console.log('✓ Using branchId:', userContext.branchId);
-      }
-      
-      console.log('Fetching staff from URL:', staffUrl);
-      
-      // Build appointments URL with organization filter
-      let appointmentsUrl = '/api/appointments?include_details=true';
-      if (userContext?.organizationId) {
-        // Note: We're passing this as context in the JWT, so the API will auto-filter
-        console.log('✓ Appointments will be filtered by organizationId:', userContext.organizationId);
-      }
-      
-      const [appointmentsRes, patientsRes, staffRes] = await Promise.all([
-        fetch(appointmentsUrl),
+
+      const [
+        appointmentsRes,
+        patientsRes,
+        doctorsRes,
+      ] = await Promise.all([
+        fetch(
+          '/api/appointments?include_details=true'
+        ),
         fetch('/api/patients'),
-        fetch(staffUrl),
+        fetch('/api/staff?role=doctor'),
       ]);
 
-      const appointmentsData = await appointmentsRes.json();
-      const patientsData = await patientsRes.json();
-      const staffData = await staffRes.json();
-      
-      console.log('Staff API response:', staffData);
-      console.log('Number of doctors returned:', Array.isArray(staffData) ? staffData.length : 'not an array');
-      if (Array.isArray(staffData) && staffData.length > 0) {
-        console.log('First doctor:', staffData[0]);
-      }
+      const appointmentsData =
+        await appointmentsRes.json();
 
-      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
-      setStaff(Array.isArray(staffData) ? staffData : []);
+      const patientsData =
+        await patientsRes.json();
 
-      // Fetch invoices for completed appointments
-      const completedAppointments = Array.isArray(appointmentsData) ? appointmentsData.filter((apt: any) => apt.status === 'completed') : [];
-      if (completedAppointments.length > 0) {
-        const invoiceMap: { [key: string]: any } = {};
-        await Promise.all(
-          completedAppointments.map(async (apt: any) => {
-            try {
-              const invoiceRes = await fetch(`/api/invoices?appointment_id=${apt.id}`);
-              if (invoiceRes.ok) {
-                const invoiceData = await invoiceRes.json();
-                invoiceMap[apt.id] = invoiceData;
-              }
-            } catch (error) {
-              console.error(`Error fetching invoice for appointment ${apt.id}:`, error);
-            }
-          })
-        );
-        setInvoices(invoiceMap);
-      }
+      const doctorsData =
+        await doctorsRes.json();
+
+      setAppointments(
+        Array.isArray(appointmentsData)
+          ? appointmentsData
+          : []
+      );
+
+      setPatients(
+        Array.isArray(patientsData)
+          ? patientsData
+          : []
+      );
+
+      setDoctors(
+        Array.isArray(doctorsData)
+          ? doctorsData
+          : []
+      );
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error(
+        'Fetch error:',
+        error
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    getUserRole();
+    fetchData();
+  }, []);
 
-    try {
-      const dateTime = `${formData.appointment_date}T${formData.appointment_time}:00`;
-
-      const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `/api/appointments?id=${editingId}` : '/api/appointments';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patient_id: formData.patient_id,
-          user_id: formData.staff_id,
-          appointment_date: dateTime,
-          duration_minutes: parseInt(formData.duration_minutes),
-          appointment_type: formData.appointment_type,
-          notes: formData.notes,
-        }),
-      });
-
-      if (response.ok) {
-        resetForm();
-        fetchData();
-      }
-    } catch (error) {
-      console.error('Error saving appointment:', error);
-    }
-  };
-
-  const handleCompleteAppointment = (id: string) => {
-    setCompletingAppointmentId(id);
-    setCompletionData({ fee_amount: '', notes_from_doctor: '' });
-    setShowCompletionForm(true);
-  };
-
-  const handleSubmitCompletion = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!completingAppointmentId || !completionData.fee_amount) {
-      alert('Please enter a fee amount');
-      return;
-    }
-
-    try {
-      console.log('📝 Completing appointment:', {
-        appointmentId: completingAppointmentId,
-        feeAmount: completionData.fee_amount,
-        notes: completionData.notes_from_doctor,
-      });
-
-      const response = await fetch(`/api/appointments?id=${completingAppointmentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'completed',
-          fee_amount: parseFloat(completionData.fee_amount),
-          notes: completionData.notes_from_doctor,
-        }),
-      });
-
-      const responseData = await response.json();
-      console.log('Response:', response.status, responseData);
-
-      if (response.ok) {
-        alert('✅ Appointment completed successfully');
-        setShowCompletionForm(false);
-        fetchData();
-      } else {
-        alert(`❌ Error: ${responseData.error || 'Failed to complete appointment'}`);
-        console.error('Error response:', responseData);
-      }
-    } catch (error) {
-      console.error('❌ Error completing appointment:', error);
-      alert(`❌ Error: ${(error as any).message || 'Failed to complete appointment'}`);
-    }
-  };
-
-  const handleMarkOngoing = async (id: string) => {
-    try {
-      const response = await fetch(`/api/appointments?id=${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ongoing' }),
-      });
-
-      if (response.ok) {
-        fetchData();
-      }
-    } catch (error) {
-      console.error('Error marking appointment as ongoing:', error);
-    }
-  };
-
-  const handleCancelAppointment = async (id: string) => {
-    if (window.confirm('Are you sure you want to cancel this appointment?')) {
-      try {
-        const response = await fetch(`/api/appointments?id=${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'cancelled' }),
-        });
-
-        if (response.ok) {
-          fetchData();
-        }
-      } catch (error) {
-        console.error('Error cancelling appointment:', error);
-      }
-    }
-  };
-
-  const handleRecordPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!paymentAppointmentId || !paymentData.amount_paid) {
-      alert('Please enter payment amount');
-      return;
-    }
-
-    try {
-      // Fetch invoice by appointment_id to get invoice ID
-      const invoiceRes = await fetch(`/api/invoices?appointment_id=${paymentAppointmentId}`);
-      if (!invoiceRes.ok) {
-        alert('❌ Invoice not found for this appointment');
-        return;
-      }
-
-      const invoice = await invoiceRes.json();
-      const invoiceId = invoice.id;
-
-      console.log('📝 Recording payment:', {
-        appointmentId: paymentAppointmentId,
-        invoiceId: invoiceId,
-        amount_paid: paymentData.amount_paid,
-        payment_method: paymentData.payment_method,
-      });
-
-      // Update invoice with payment information
-      const response = await fetch(`/api/invoices?id=${invoiceId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'paid',
-          payment_mode: paymentData.payment_method,
-          amount_paid: parseFloat(paymentData.amount_paid),
-          notes: paymentData.notes || `Payment method: ${paymentData.payment_method}${paymentData.payment_reference ? ', Ref: ' + paymentData.payment_reference : ''}`,
-        }),
-      });
-
-      if (response.ok) {
-        alert('✅ Payment recorded successfully');
-        setShowPaymentForm(false);
-        setPaymentData({
-          amount_paid: '',
-          payment_method: 'cash',
-          payment_reference: '',
-          notes: '',
-        });
-        fetchData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || 'Failed to record payment'}`);
-      }
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      alert(`❌ Error recording payment: ${(error as any).message}`);
-    }
-  };
-
-  const fetchInvoiceForAppointment = async (appointmentId: string) => {
-    try {
-      const response = await fetch(`/api/invoices?appointment_id=${appointmentId}`);
-      if (response.ok) {
-        const invoiceData = await response.json();
-        if (invoiceData && invoiceData.amount) {
-          return invoiceData.amount;
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching invoice:', error);
-    }
-    return 0;
-  };
-
-  const handleAddPrescriptionMedicine = () => {
-    const newId = (Math.max(...prescriptionMedicines.map(m => parseInt(m.id) || 0), 0) + 1).toString();
-    setPrescriptionMedicines([...prescriptionMedicines, { id: newId, medication_name: '', dosage: '', frequency: '', quantity: 0 }]);
-  };
-
-  const handleRemovePrescriptionMedicine = (id: string) => {
-    if (prescriptionMedicines.length > 1) {
-      setPrescriptionMedicines(prescriptionMedicines.filter(m => m.id !== id));
-    }
-  };
-
-  const handlePrescriptionMedicineChange = (id: string, field: string, value: string | number) => {
-    setPrescriptionMedicines(prescriptionMedicines.map(m =>
-      m.id === id ? { ...m, [field]: value } : m
-    ));
-  };
-
-  const handleWritePrescription = (appointmentId: string, patientId: string) => {
-    setPrescriptionAppointmentId(appointmentId);
-    setPrescriptionMedicines([{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }]);
-    setPrescriptionData({ notes: '' });
-    setShowPrescriptionForm(true);
-  };
-
-  const handleSubmitPrescription = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!prescriptionAppointmentId) {
-      alert('No appointment selected');
-      return;
-    }
-
-    // Find the appointment to get patient and doctor info
-    const appointment = appointments.find(a => a.id === prescriptionAppointmentId);
-    if (!appointment) {
-      alert('Appointment not found');
-      return;
-    }
-
-    // Validate at least one medicine
-    if (prescriptionMedicines.some(m => !m.medication_name || !m.dosage || !m.frequency)) {
-      alert('Please fill in all medicine details');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/prescriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patient_id: appointment.patient_id,
-          staff_id: userContext?.userId,
-          appointment_id: prescriptionAppointmentId,
-          medications: prescriptionMedicines,
-          issued_date: new Date().toISOString().split('T')[0],
-          status: 'active',
-          notes: prescriptionData.notes,
-        }),
-      });
-
-      if (response.ok) {
-        alert('✅ Prescription created successfully');
-        setShowPrescriptionForm(false);
-        setPrescriptionMedicines([{ id: '1', medication_name: '', dosage: '', frequency: '', quantity: 0 }]);
-        setPrescriptionData({ notes: '' });
-        fetchData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || 'Failed to create prescription'}`);
-      }
-    } catch (error) {
-      console.error('Error creating prescription:', error);
-      alert('❌ Error creating prescription');
-    }
-  };
-
-  const generatePrescriptionPDF = (prescriptionId: string, patientName: string) => {
-    const element = document.getElementById(`prescription-${prescriptionId}`);
-    if (!element) {
-      alert('❌ Prescription element not found');
-      return;
-    }
-
-    // Create a new window for printing
-    const printWindow = window.open('', '', 'width=900,height=1000');
-    if (!printWindow) {
-      alert('❌ Unable to open print window. Please check popup settings.');
-      return;
-    }
-
-    // Get the element's HTML
-    const elementHTML = element.innerHTML;
-
-    // Write HTML to the new window with comprehensive print styles
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Prescription_${patientName.replace(/\s+/g, '_')}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            html {
-              font-size: 16px;
-            }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-              padding: 20px;
-              background: white;
-              color: #111827;
-            }
-            
-            /* Typography */
-            h3 {
-              font-size: 1.875rem;
-              font-weight: bold;
-              color: white;
-            }
-            sub {
-              display: block;
-              font-size: 0.75rem;
-              color: inherit;
-            }
-            
-            /* Border and Layout */
-            .rounded-lg {
-              border-radius: 0.5rem;
-            }
-            .rounded {
-              border-radius: 0.25rem;
-            }
-            .border {
-              border: 1px solid #d1d5db;
-            }
-            .border-4 {
-              border: 4px solid #bfdbfe;
-            }
-            .border-b {
-              border-bottom: 1px solid #d1d5db;
-            }
-            .border-b-2 {
-              border-bottom: 2px solid #d1d5db;
-            }
-            .border-t {
-              border-top: 1px solid #d1d5db;
-            }
-            .border-t-2 {
-              border-top: 2px solid #111827;
-            }
-            .border-l-4 {
-              border-left: 4px solid #f59e0b;
-            }
-            .border-dashed {
-              border-style: dashed;
-            }
-            .border-blue-200 {
-              border-color: #bfdbfe;
-            }
-            .border-blue-300 {
-              border-color: #93c5fd;
-            }
-            .border-blue-400 {
-              border-color: #60a5fa;
-            }
-            .border-gray-300 {
-              border-color: #d1d5db;
-            }
-            .border-gray-800 {
-              border-color: #1f2937;
-            }
-            .border-red-200 {
-              border-color: #fecaca;
-            }
-            .border-orange-200 {
-              border-color: #fed7aa;
-            }
-            .border-yellow-400 {
-              border-color: #facc15;
-            }
-            
-            /* Backgrounds */
-            .bg-white {
-              background-color: white;
-            }
-            .bg-gradient-to-r {
-              background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
-            }
-            .bg-gray-100 {
-              background-color: #f3f4f6;
-            }
-            .bg-blue-50 {
-              background-color: #eff6ff;
-            }
-            .bg-blue-100 {
-              background-color: #dbeafe;
-            }
-            .bg-red-50 {
-              background-color: #fef2f2;
-            }
-            .bg-orange-50 {
-              background-color: #fff7ed;
-            }
-            .bg-green-100 {
-              background-color: #dcfce7;
-            }
-            .bg-yellow-50 {
-              background-color: #fffbeb;
-            }
-            
-            /* Text Colors */
-            .text-white {
-              color: white;
-            }
-            .text-gray-900 {
-              color: #111827;
-            }
-            .text-gray-700 {
-              color: #374151;
-            }
-            .text-gray-600 {
-              color: #4b5563;
-            }
-            .text-gray-500 {
-              color: #6b7280;
-            }
-            .text-blue-50 {
-              color: #eff6ff;
-            }
-            .text-blue-100 {
-              color: #dbeafe;
-            }
-            .text-blue-600 {
-              color: #2563eb;
-            }
-            .text-green-800 {
-              color: #166534;
-            }
-            
-            /* Font Sizing and Weight */
-            .text-xs {
-              font-size: 0.75rem;
-            }
-            .text-sm {
-              font-size: 0.875rem;
-            }
-            .text-base {
-              font-size: 1rem;
-            }
-            .text-lg {
-              font-size: 1.125rem;
-            }
-            .text-2xl {
-              font-size: 1.5rem;
-            }
-            .text-3xl {
-              font-size: 1.875rem;
-            }
-            .font-bold {
-              font-weight: bold;
-            }
-            .font-semibold {
-              font-weight: 600;
-            }
-            .font-semibold {
-              font-weight: 600;
-            }
-            
-            /* Spacing */
-            .p-2 {
-              padding: 0.5rem;
-            }
-            .p-3 {
-              padding: 0.75rem;
-            }
-            .px-2 {
-              padding-left: 0.5rem;
-              padding-right: 0.5rem;
-            }
-            .px-3 {
-              padding-left: 0.75rem;
-              padding-right: 0.75rem;
-            }
-            .px-4 {
-              padding-left: 1rem;
-              padding-right: 1rem;
-            }
-            .py-1 {
-              padding-top: 0.25rem;
-              padding-bottom: 0.25rem;
-            }
-            .py-2 {
-              padding-top: 0.5rem;
-              padding-bottom: 0.5rem;
-            }
-            .py-3 {
-              padding-top: 0.75rem;
-              padding-bottom: 0.75rem;
-            }
-            .mb-1 {
-              margin-bottom: 0.25rem;
-            }
-            .mb-2 {
-              margin-bottom: 0.5rem;
-            }
-            .mb-3 {
-              margin-bottom: 0.75rem;
-            }
-            .mb-4 {
-              margin-bottom: 1rem;
-            }
-            .mb-6 {
-              margin-bottom: 1.5rem;
-            }
-            .mt-1 {
-              margin-top: 0.25rem;
-            }
-            .pt-3 {
-              padding-top: 0.75rem;
-            }
-            .pt-4 {
-              padding-top: 1rem;
-            }
-            .pb-4 {
-              padding-bottom: 1rem;
-            }
-            .pr-6 {
-              padding-right: 1.5rem;
-            }
-            .p-6 {
-              padding: 1.5rem;
-            }
-            .p-8 {
-              padding: 2rem;
-            }
-            
-            /* Overflow */
-            .overflow-hidden {
-              overflow: hidden;
-            }
-            .overflow-y-auto {
-              overflow-y: auto;
-            }
-            
-            /* Display and Layout */
-            .grid {
-              display: grid;
-            }
-            .grid-cols-1 {
-              grid-template-columns: repeat(1, minmax(0, 1fr));
-            }
-            .grid-cols-2 {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            .gap-2 {
-              gap: 0.5rem;
-            }
-            .gap-3 {
-              gap: 0.75rem;
-            }
-            .gap-4 {
-              gap: 1rem;
-            }
-            .gap-6 {
-              gap: 1.5rem;
-            }
-            .flex {
-              display: flex;
-            }
-            .flex-1 {
-              flex: 1 1 0%;
-            }
-            .flex-col {
-              flex-direction: column;
-            }
-            .items-start {
-              align-items: flex-start;
-            }
-            .items-center {
-              align-items: center;
-            }
-            .justify-between {
-              justify-content: space-between;
-            }
-            
-            /* Tables */
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 1.5rem;
-              border: 1px solid #d1d5db;
-            }
-            table tbody tr {
-              border-bottom: 1px solid #d1d5db;
-            }
-            table td {
-              padding: 0.75rem 1rem;
-              border: 1px solid #d1d5db;
-            }
-            
-            /* Inline elements */
-            .inline-block {
-              display: inline-block;
-            }
-            .mr-2 {
-              margin-right: 0.5rem;
-            }
-            
-            /* Text formatting */
-            .uppercase {
-              text-transform: uppercase;
-            }
-            .tracking-wide {
-              letter-spacing: 0.05em;
-            }
-            .italic {
-              font-style: italic;
-            }
-            
-            /* Hidden in print */
-            @media print {
-              body {
-                padding: 0;
-                margin: 0;
-              }
-              .flex.gap-3 {
-                display: none !important;
-              }
-              .rounded-lg.shadow-xl {
-                border: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          ${elementHTML}
-          <script>
-            setTimeout(() => {
-              window.print();
-            }, 250);
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  const handleViewPrescriptionsClick = (appointmentId: string) => {
-    setShowViewPrescriptions(true);
-    fetchPrescriptionsForAppointment(appointmentId);
-  };
-
-
-  const fetchPrescriptionsForAppointment = async (appointmentId: string) => {
-    try {
-      const response = await fetch(`/api/prescriptions?appointment_id=${appointmentId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Get all prescriptions for this appointment and merge vitals/medicines if in different rows
-        let allPrescriptions = Array.isArray(data) ? data : [];
-        
-        console.log('Raw prescriptions:', allPrescriptions);
-        
-        // Map nested patient, user, organization and branch data to flat fields
-        allPrescriptions = allPrescriptions.map((presc: any) => ({
-          ...presc,
-          patient_name: presc.patients 
-            ? `${presc.patients.first_name} ${presc.patients.last_name}`.trim()
-            : 'Patient Name',
-          patient_phone: presc.patients?.phone || 'Phone Not Available',
-          doctor_name: presc.users 
-            ? `Dr. ${presc.users.first_name} ${presc.users.last_name}`.trim()
-            : 'Dr. Name',
-          clinic_name: presc.organizations?.name || 'Clinic',
-          clinic_address: presc.organizations?.address || 'Address Not Available',
-          clinic_postal_code: presc.organizations?.postal_code || '',
-          clinic_phone: presc.organizations?.phone || '(555) 000-0000',
-          branch_name: presc.branches?.name || 'Main Branch',
-          branch_address: presc.branches?.address || 'Address Not Available',
-          branch_phone: presc.branches?.phone || 'N/A',
-        }));
-        
-        // Since all prescriptions should have the same appointment_id, we can merge them
-        if (allPrescriptions.length > 1) {
-          // Merge all prescriptions into one
-          const mergedPresc = {
-            ...allPrescriptions[0], // Start with first prescription
-            vitals: null,
-            medications: [],
-          };
-
-          // Collect all vitals and medications from all rows
-          allPrescriptions.forEach((presc: any) => {
-            if (presc.vitals && !mergedPresc.vitals) {
-              mergedPresc.vitals = presc.vitals;
-            }
-            if (presc.medications && Array.isArray(presc.medications)) {
-              presc.medications.forEach((med: any) => {
-                if (!mergedPresc.medications.some((m: any) => m.medication_name === med.medication_name)) {
-                  mergedPresc.medications.push(med);
-                }
-              });
-            }
-          });
-
-          setAppointmentPrescriptions([mergedPresc]);
-        } else {
-          setAppointmentPrescriptions(allPrescriptions);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching prescriptions:', error);
-    }
-  };
-
-  //const handleViewPrescriptions = (appointmentId: string, patientId: string) => {
-  //  setViewPrescriptionsId(appointmentId);
-  //};
-
-  const handleSaveVitals = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!vitalsAppointmentId) {
-      alert('❌ Appointment ID not found');
-      console.error('vitalsAppointmentId is null/undefined');
-      return;
-    }
-
-    try {
-      const vitalsPayload = {
-        appointment_id: vitalsAppointmentId,
-        vitals: {
-          blood_pressure_systolic: vitalsData.blood_pressure_systolic ? parseInt(vitalsData.blood_pressure_systolic) : null,
-          blood_pressure_diastolic: vitalsData.blood_pressure_diastolic ? parseInt(vitalsData.blood_pressure_diastolic) : null,
-          heart_rate: vitalsData.heart_rate ? parseInt(vitalsData.heart_rate) : null,
-          temperature: vitalsData.temperature ? parseFloat(vitalsData.temperature) : null,
-          oxygen_saturation: vitalsData.oxygen_saturation ? parseInt(vitalsData.oxygen_saturation) : null,
-          weight: vitalsData.weight ? parseFloat(vitalsData.weight) : null,
-          height: vitalsData.height ? parseFloat(vitalsData.height) : null,
-          temperature_unit: vitalsData.temperature_unit,
-          weight_unit: vitalsData.weight_unit,
-          height_unit: vitalsData.height_unit,
-        },
-      };
-
-      console.log('Sending vitals payload:', vitalsPayload);
-
-      const response = await fetch('/api/appointments/vitals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(vitalsPayload),
-      });
-
-      console.log('Response status:', response.status);
-      const responseData = await response.json();
-      console.log('Response data:', responseData);
-
-      if (response.ok) {
-        setShowVitalsForm(false);
-        setVitalsAppointmentId(null);
-        setVitalsData({
-          blood_pressure_systolic: '',
-          blood_pressure_diastolic: '',
-          heart_rate: '',
-          temperature: '',
-          oxygen_saturation: '',
-          weight: '',
-          height: '',
-          temperature_unit: 'C',
-          weight_unit: 'kg',
-          height_unit: 'cm',
-        });
-        await fetchData();
-        alert('✅ Vitals saved successfully!');
-      } else {
-        const errorMsg = responseData.error || responseData.message || 'Failed to save vitals';
-        console.error('Error response:', errorMsg);
-        alert(`❌ ${errorMsg}`);
-      }
-    } catch (error) {
-      console.error('Error saving vitals:', error);
-      alert(`❌ Error saving vitals: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
+  // --------------------------------
+  // HELPERS
+  // --------------------------------
   const resetForm = () => {
     setFormData({
       patient_id: '',
-      staff_id: '',
+      user_id: '',
       appointment_date: '',
       appointment_time: '',
       duration_minutes: '30',
       appointment_type: 'consultation',
       notes: '',
     });
+
     setEditingId(null);
     setShowForm(false);
-    setSchedulingConflict(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800';
-      case 'ongoing':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const filteredAppointments =
+    appointments.filter(
+      (a) => a.status === appointmentView
+    );
+
+    const [search, setSearch] = useState('');
+
+  const fetchInvoiceForAppointment =
+    async (appointmentId: string) => {
+      try {
+        const res = await fetch(
+          `/api/invoices?appointment_id=${appointmentId}`
+        );
+
+        if (!res.ok) return 0;
+
+        const data = await res.json();
+
+        if (
+          Array.isArray(data) &&
+          data.length
+        ) {
+          return Number(
+            data[0]?.total_amount || 0
+          );
+        }
+
+        return 0;
+      } catch {
+        return 0;
+      }
+    };
+
+  // --------------------------------
+  // APPOINTMENT CREATE / UPDATE
+  // --------------------------------
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+
+    try {
+      const dateTime =
+        `${formData.appointment_date}T${formData.appointment_time}:00`;
+
+      const method =
+        editingId ? 'PUT' : 'POST';
+
+      const url = editingId
+        ? `/api/appointments?id=${editingId}`
+        : '/api/appointments';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type':
+            'application/json',
+        },
+        body: JSON.stringify({
+          patient_id:
+            formData.patient_id,
+          user_id: formData.user_id,
+          appointment_date:
+            dateTime,
+          duration_minutes:
+            Number(
+              formData.duration_minutes
+            ) || 30,
+          appointment_type:
+            formData.appointment_type,
+          notes: formData.notes,
+        }),
+      });
+
+      if (!response.ok) {
+        const err =
+          await response.json();
+
+        alert(
+          err.error ||
+            'Failed to save appointment'
+        );
+        return;
+      }
+
+      resetForm();
+      fetchData();
+    } catch (error) {
+      console.error(
+        'Save appointment error:',
+        error
+      );
     }
   };
 
-  const filteredAppointments = appointments.filter((apt) => apt.status === appointmentView);
-  const tableData = filteredAppointments;
+  // --------------------------------
+  // MARK ONGOING
+  // --------------------------------
+  const handleMarkOngoing =
+    async (id: string) => {
+      try {
+        const response =
+          await fetch(
+            `/api/appointments?id=${id}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                status: 'ongoing',
+              }),
+            }
+          );
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
+        if (response.ok) {
+          fetchData();
+        }
+      } catch (error) {
+        console.error(
+          'Mark ongoing error:',
+          error
+        );
+      }
+    };
+
+  // --------------------------------
+  // CANCEL APPOINTMENT
+  // --------------------------------
+  const handleCancelAppointment =
+    async (id: string) => {
+      if (
+        !window.confirm(
+          'Cancel this appointment?'
+        )
+      )
+        return;
+
+      try {
+        const response =
+          await fetch(
+            `/api/appointments?id=${id}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                status: 'cancelled',
+              }),
+            }
+          );
+
+        if (response.ok) {
+          fetchData();
+        }
+      } catch (error) {
+        console.error(
+          'Cancel error:',
+          error
+        );
+      }
+    };
+
+  // --------------------------------
+  // COMPLETE APPOINTMENT
+  // --------------------------------
+  const handleCompleteAppointment =
+    (id: string) => {
+      setCompletingAppointmentId(
+        id
+      );
+
+      setCompletionData({
+        fee_amount: '',
+        notes_from_doctor: '',
+      });
+
+      setShowCompletionForm(true);
+    };
+
+  const handleSubmitCompletion =
+    async (
+      e: React.FormEvent
+    ) => {
+      e.preventDefault();
+
+      if (
+        !completingAppointmentId
+      )
+        return;
+
+      try {
+        const response =
+          await fetch(
+            `/api/appointments?id=${completingAppointmentId}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                status: 'completed',
+                fee_amount:
+                  Number(
+                    completionData.fee_amount
+                  ) || 0,
+                notes_from_doctor:
+                  completionData.notes_from_doctor,
+              }),
+            }
+          );
+
+        if (!response.ok) {
+          const err =
+            await response.json();
+
+          alert(
+            err.error ||
+              'Failed'
+          );
+          return;
+        }
+
+        setShowCompletionForm(
+          false
+        );
+
+        fetchData();
+      } catch (error) {
+        console.error(
+          'Complete error:',
+          error
+        );
+      }
+    };
+
+  // --------------------------------
+  // PAYMENT
+  // --------------------------------
+  const handleOpenPayment =
+    async (
+      appointmentId: string,
+      feeAmount?: number | null
+    ) => {
+      setPaymentAppointmentId(
+        appointmentId
+      );
+
+      const invoiceAmount =
+        await fetchInvoiceForAppointment(
+          appointmentId
+        );
+
+      const pending =
+        invoiceAmount ||
+        feeAmount ||
+        0;
+
+      setPendingAmount(
+        Number(pending)
+      );
+
+      setPaymentData({
+        amount_paid:
+          String(pending),
+        payment_method:
+          'cash',
+        payment_reference:
+          '',
+        notes: '',
+      });
+
+      setShowPaymentForm(
+        true
+      );
+    };
+
+  const handleRecordPayment =
+    async (
+      e: React.FormEvent
+    ) => {
+      e.preventDefault();
+
+      if (
+        !paymentAppointmentId
+      ) {
+        alert(
+          'Appointment missing'
+        );
+        return;
+      }
+
+      try {
+        const response =
+          await fetch(
+            '/api/appointments/payments',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                appointment_id:
+                  paymentAppointmentId,
+                amount_paid:
+                  Number(
+                    paymentData.amount_paid
+                  ) || 0,
+                amount_due:
+                  pendingAmount,
+                payment_method:
+                  paymentData.payment_method,
+                payment_reference:
+                  paymentData.payment_reference,
+                notes:
+                  paymentData.notes,
+              }),
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          alert(
+            result.error ||
+              'Payment failed'
+          );
+          return;
+        }
+
+        setShowPaymentForm(
+          false
+        );
+
+        setPaymentData({
+          amount_paid: '',
+          payment_method:
+            'cash',
+          payment_reference:
+            '',
+          notes: '',
+        });
+
+        fetchData();
+      } catch (error) {
+        console.error(
+          'Payment error:',
+          error
+        );
+      }
+    };
+
+  // --------------------------------
+  // VITALS
+  // --------------------------------
+  const handleSaveVitals =
+    async (
+      e: React.FormEvent
+    ) => {
+      e.preventDefault();
+
+      if (
+        !vitalsAppointmentId
+      )
+        return;
+
+      try {
+        const response =
+          await fetch(
+            '/api/appointments/vitals',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+              body: JSON.stringify({
+                appointment_id:
+                  vitalsAppointmentId,
+                vitals: {
+                  blood_pressure_systolic:
+                    vitalsData.blood_pressure_systolic
+                      ? Number(
+                          vitalsData.blood_pressure_systolic
+                        )
+                      : null,
+
+                  blood_pressure_diastolic:
+                    vitalsData.blood_pressure_diastolic
+                      ? Number(
+                          vitalsData.blood_pressure_diastolic
+                        )
+                      : null,
+
+                  heart_rate:
+                    vitalsData.heart_rate
+                      ? Number(
+                          vitalsData.heart_rate
+                        )
+                      : null,
+
+                  temperature:
+                    vitalsData.temperature
+                      ? Number(
+                          vitalsData.temperature
+                        )
+                      : null,
+
+                  oxygen_saturation:
+                    vitalsData.oxygen_saturation
+                      ? Number(
+                          vitalsData.oxygen_saturation
+                        )
+                      : null,
+
+                  weight:
+                    vitalsData.weight
+                      ? Number(
+                          vitalsData.weight
+                        )
+                      : null,
+
+                  height:
+                    vitalsData.height
+                      ? Number(
+                          vitalsData.height
+                        )
+                      : null,
+
+                  temperature_unit:
+                    vitalsData.temperature_unit,
+
+                  weight_unit:
+                    vitalsData.weight_unit,
+
+                  height_unit:
+                    vitalsData.height_unit,
+                },
+              }),
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          alert(
+            result.error
+          );
+          return;
+        }
+
+        alert(
+          'Vitals saved'
+        );
+
+        setShowVitalsForm(
+          false
+        );
+
+        fetchData();
+      } catch (error) {
+        console.error(
+          'Vitals error:',
+          error
+        );
+      }
+    };
+
+  // --------------------------------
+  // PRESCRIPTION LINKS
+  // --------------------------------
+  const handleWriteRx =
+    (
+      appointmentId: string
+    ) => {
+      router.push(
+        `/prescriptions/create?appointment_id=${appointmentId}`
+      );
+    };
+
+  const handleViewRx =
+    (
+      patient_id: string
+    ) => {
+      router.push(
+          `/prescriptions?patient_id=${patient_id}`
+        //`/prescriptions?appointment_id=${appointmentId}`
+      );
+    };
+
+    return (
+  <div className="min-h-screen bg-gray-50">
+    {/* <Header /> */}
+
+    <div className="max-w-7xl mx-auto px-4 py-8">
+
+         {/* HERO */}
+
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl mb-8">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
           <div>
-            <button
-              onClick={() => router.push(dashboardUrl)}
-              className="text-blue-600 hover:text-blue-900 font-semibold mb-2 flex items-center gap-2 text-sm sm:text-base"
-            >
-              ← Back to Dashboard
-            </button>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">Appointment Management</h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600">View and manage patient appointments</p>
-          </div>
-        </div>
-
-        {/* Appointment Form */}
-        {!showForm && (userContext?.roleType === 'receptionist' || userContext?.roleType === 'clinic_admin') && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="mb-6 w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-blue-700 transition"
-          >
-            + Schedule Appointment
-          </button>
-        )}
-
-        {showForm && (
-          <div className="mb-8 bg-white rounded-lg shadow p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4">Schedule New Appointment</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                <select
-                  value={formData.patient_id}
-                  onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                  required
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Patient</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={formData.staff_id}
-                  onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
-                  required
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Doctor</option>
-                  {staff
-                    .filter((s) => s.specialization === 'doctor' || s.specialization)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.first_name} {s.last_name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                <input
-                  type="date"
-                  value={formData.appointment_date}
-                  onChange={(e) => setFormData({ ...formData, appointment_date: e.target.value })}
-                  required
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="time"
-                  value={formData.appointment_time}
-                  onChange={(e) => setFormData({ ...formData, appointment_time: e.target.value })}
-                  required
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                <select
-                  value={formData.duration_minutes}
-                  onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="15">15 minutes</option>
-                  <option value="30">30 minutes</option>
-                  <option value="45">45 minutes</option>
-                  <option value="60">1 hour</option>
-                </select>
-                <select
-                  value={formData.appointment_type}
-                  onChange={(e) => setFormData({ ...formData, appointment_type: e.target.value })}
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="consultation">Consultation</option>
-                  <option value="follow-up">Follow-up</option>
-                  <option value="procedure">Procedure</option>
-                </select>
-              </div>
-
-              <textarea
-                placeholder="Notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-                rows={3}
-              ></textarea>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="submit"
-                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-green-600 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-green-700"
-                >
-                  Schedule Appointment
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="w-full sm:flex-1 px-4 sm:px-6 py-2 bg-gray-400 text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-gray-500"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {userContext?.roleType === 'doctor' && (
-          <div className="mb-6 bg-white rounded-lg shadow p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Doctor Reminder</h2>
-                <p className="text-xs sm:text-sm text-gray-600">Daily appointment summary for your clinic day.</p>
-              </div>
-              {doctorRemindersLoading && <span className="text-xs sm:text-sm text-gray-500">Loading reminders...</span>}
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Activity size={16} />
+              MediQuick Rx
             </div>
-            {doctorReminders.length === 0 ? (
-              <p className="text-sm text-gray-600">No reminders available.</p>
-            ) : (
-              doctorReminders.map((reminder) => (
-                <div key={reminder.appointment_id} className="rounded-lg border border-blue-100 bg-blue-50 p-3 sm:p-4 mb-3">
-                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">{reminder.title}</h3>
-                  <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans">{reminder.message}</pre>
-                </div>
-              ))
-            )}
-          </div>
-        )}
 
-        {/* Tabs */}
-        <div className="mb-6 flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
-          {['scheduled', 'ongoing', 'completed', 'cancelled'].map((tab) => {
-            const tabCount = appointments.filter((apt) => apt.status === tab).length;
-            return (
-              <button
-                key={tab}
-                onClick={() => setAppointmentView(tab as any)}
-                className={`px-3 sm:px-6 py-2 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition capitalize whitespace-nowrap ${
-                  appointmentView === tab
-                    ? 'text-blue-600 border-blue-600'
-                    : 'text-gray-600 border-transparent hover:text-gray-900'
-                }`}
+            <p className="mt-3 text-blue-100 max-w-2xl">
+               Appointment Management
+            </p>
+            <p className="mt-2 text-blue-100">
+                Manage appointments, consultations, prescriptions and payments
+            </p>
+          </div>
+
+{/* ================= HEADER ================= */}
+<div className="mb-8">
+
+  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+
+    {/* TODAY CARD */}
+    <div
+      className="bg-gradient-to-r from-blue-50 to-indigo-50
+      border border-blue-100
+      rounded-3xl px-5 py-4
+      shadow-sm"
+    >
+      <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">
+        Today
+      </div>
+
+      <div className="mt-1 text-lg font-bold text-gray-900">
+        {new Date().toLocaleDateString('en-IN', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+        </div>
+      </div>
+
+
+           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+
+            
+            <div className="text-3xl font-bold mt-2">
+                        {!selectedPatient && (
+            <button
+              onClick={() => router.push(dashboardUrl)}        
+              //onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+               <SkipBack size={16} />
+               Dashboard
+            </button>
+          )}
+            </div>
+          </div>
+
+
+{/* ================= STATS CARDS ================= */}
+<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+
+  {/* TOTAL */}
+  <div
+    className="bg-white border border-gray-200
+    rounded-3xl p-5 shadow-sm
+    hover:shadow-lg transition"
+  >
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-gray-500">
+          Total Appointments
+        </p>
+
+        <h3 className="mt-2 text-3xl font-bold text-gray-900">
+          {appointments.length}
+        </h3>
+
+        <p className="mt-2 text-xs text-gray-400">
+          All appointment records
+        </p>
+      </div>
+
+      <div
+        className="w-14 h-14 rounded-2xl
+        bg-blue-50 flex items-center justify-center"
+      >
+        <span className="text-2xl">📅</span>
+      </div>
+
+    </div>
+  </div>
+
+  {/* SCHEDULED */}
+  <div
+    className="bg-white border border-gray-200
+    rounded-3xl p-5 shadow-sm
+    hover:shadow-lg transition"
+  >
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-gray-500">
+          Scheduled
+        </p>
+
+        <h3 className="mt-2 text-3xl font-bold text-blue-600">
+          {
+            appointments.filter(
+              (a) => a.status === 'scheduled'
+            ).length
+          }
+        </h3>
+
+        <p className="mt-2 text-xs text-gray-400">
+          Upcoming visits
+        </p>
+      </div>
+
+      <div
+        className="w-14 h-14 rounded-2xl
+        bg-blue-50 flex items-center justify-center"
+      >
+        <span className="text-2xl">🗓️</span>
+      </div>
+
+    </div>
+  </div>
+
+  {/* ONGOING */}
+  <div
+    className="bg-white border border-gray-200
+    rounded-3xl p-5 shadow-sm
+    hover:shadow-lg transition"
+  >
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-gray-500">
+          Ongoing
+        </p>
+
+        <h3 className="mt-2 text-3xl font-bold text-yellow-600">
+          {
+            appointments.filter(
+              (a) => a.status === 'ongoing'
+            ).length
+          }
+        </h3>
+
+        <p className="mt-2 text-xs text-gray-400">
+          In consultation
+        </p>
+      </div>
+
+      <div
+        className="w-14 h-14 rounded-2xl
+        bg-yellow-50 flex items-center justify-center"
+      >
+        <span className="text-2xl">🩺</span>
+      </div>
+
+    </div>
+  </div>
+
+  {/* COMPLETED */}
+  <div
+    className="bg-white border border-gray-200
+    rounded-3xl p-5 shadow-sm
+    hover:shadow-lg transition"
+  >
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-medium text-gray-500">
+          Completed
+        </p>
+
+        <h3 className="mt-2 text-3xl font-bold text-green-600">
+          {
+            appointments.filter(
+              (a) => a.status === 'completed'
+            ).length
+          }
+        </h3>
+
+        <p className="mt-2 text-xs text-gray-400">
+          Finished visits
+        </p>
+      </div>
+
+      <div
+        className="w-14 h-14 rounded-2xl
+        bg-green-50 flex items-center justify-center"
+      >
+        <span className="text-2xl">✅</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{/* ================= ACTION BAR ================= */}
+<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+
+  {/* LEFT ACTIONS */}
+  <div className="flex flex-wrap gap-3">
+
+    {!showForm &&
+      ['receptionist', 'clinic_admin', 'branch_admin'].includes(
+        userContext?.roleType || ''
+      ) && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="
+          inline-flex items-center gap-2
+          px-5 py-3
+          rounded-2xl
+          bg-gradient-to-r from-blue-600 to-indigo-600
+          text-white font-semibold
+          shadow-lg hover:shadow-xl
+          hover:scale-[1.02]
+          transition-all"
+        >
+          <span className="text-lg">＋</span>
+          Schedule Appointment
+        </button>
+      )}
+
+  </div>
+
+  {/* SEARCH */}
+  <div className="w-full lg:w-96">
+
+    <div className="relative">
+
+      <input
+        type="text"
+        placeholder="Search patient / doctor..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="
+        w-full
+        rounded-2xl
+        border border-gray-300
+        bg-white
+        pl-11 pr-4 py-3
+        shadow-sm
+        focus:ring-2
+        focus:ring-blue-500
+        focus:border-blue-500
+        outline-none"
+      />
+
+      <svg
+        className="absolute left-4 top-3.5 h-5 w-5 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-4.3-4.3m0 0A7.5 7.5 0 105.4 5.4a7.5 7.5 0 0011.3 11.3z"
+        />
+      </svg>
+
+    </div>
+  </div>
+
+</div>
+
+{/* ================= APPOINTMENT FORM ================= */}
+{showForm && (
+  <div
+    className="
+    mb-8
+    rounded-3xl
+    bg-white
+    border border-gray-200
+    shadow-xl
+    overflow-hidden"
+  >
+
+    {/* FORM HEADER */}
+    <div
+      className="
+      px-6 py-5
+      border-b border-gray-200
+      bg-gradient-to-r
+      from-blue-50
+      to-indigo-50"
+    >
+      <h2 className="text-2xl font-bold text-gray-900">
+        Schedule Appointment
+      </h2>
+
+      <p className="text-gray-600 mt-1">
+        Create and manage patient appointments
+      </p>
+    </div>
+
+    {/* FORM BODY */}
+    <form
+      onSubmit={handleSubmit}
+      className="p-6"
+    >
+
+      {/* PATIENT + DOCTOR */}
+      <div className="grid md:grid-cols-2 gap-5 mb-5">
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Patient *
+          </label>
+
+          <select
+            required
+            value={formData.patient_id}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                patient_id: e.target.value,
+              })
+            }
+            className="
+            w-full
+            rounded-2xl
+            border border-gray-300
+            px-4 py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            outline-none"
+          >
+            <option value="">
+              Select Patient
+            </option>
+
+            {patients.map((p) => (
+              <option
+                key={p.id}
+                value={p.id}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tabCount})
-              </button>
-            );
-          })}
+                {p.first_name} {p.last_name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Appointments Table/Cards */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loading ? (
-            <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">Loading appointments...</div>
-          ) : tableData.length === 0 ? (
-            <div className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">No {appointmentView} appointments available.</div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Patient</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Doctor</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Date & Time</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Type</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Fee</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Payment</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {tableData.map((apt) => (
-                      <tr key={apt.id} className="hover:bg-gray-50">
-                        <td
-                          className="px-4 sm:px-6 py-4 text-xs sm:text-sm cursor-pointer text-blue-600 hover:underline"
-                          onClick={() => {
-                            setSelectedPatient(apt);
-                            setShowPatientDetails(true);
-                          }}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Doctor *
+          </label>
+
+          <select
+            required
+            value={formData.user_id}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                user_id: e.target.value,
+              })
+            }
+            className="
+            w-full
+            rounded-2xl
+            border border-gray-300
+            px-4 py-3
+            bg-white
+            focus:ring-2
+            focus:ring-blue-500
+            outline-none"
+          >
+            <option value="">
+              Select Doctor
+            </option>
+
+            {doctors.map((d) => (
+              <option
+                key={d.id}
+                value={d.id}
+              >
+                Dr. {d.first_name} {d.last_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+      </div>
+
+      {/* DATE + TIME */}
+      <div className="grid md:grid-cols-2 gap-5 mb-5">
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Appointment Date *
+          </label>
+
+          <input
+            type="date"
+            required
+            value={formData.appointment_date}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                appointment_date: e.target.value,
+              })
+            }
+            className="
+            w-full
+            rounded-2xl
+            border border-gray-300
+            px-4 py-3
+            focus:ring-2
+            focus:ring-blue-500
+            outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Appointment Time *
+          </label>
+
+          <input
+            type="time"
+            required
+            value={formData.appointment_time}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                appointment_time: e.target.value,
+              })
+            }
+            className="
+            w-full
+            rounded-2xl
+            border border-gray-300
+            px-4 py-3
+            focus:ring-2
+            focus:ring-blue-500
+            outline-none"
+          />
+        </div>
+
+      </div>
+
+      {/* DURATION + TYPE */}
+      <div className="grid md:grid-cols-2 gap-5 mb-5">
+
+        <select
+          value={formData.duration_minutes}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              duration_minutes: e.target.value,
+            })
+          }
+          className="
+          rounded-2xl
+          border border-gray-300
+          px-4 py-3"
+        >
+          <option value="15">15 mins</option>
+          <option value="30">30 mins</option>
+          <option value="45">45 mins</option>
+          <option value="60">60 mins</option>
+        </select>
+
+        <select
+          value={formData.appointment_type}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              appointment_type: e.target.value,
+            })
+          }
+          className="
+          rounded-2xl
+          border border-gray-300
+          px-4 py-3"
+        >
+          <option value="consultation">
+            Consultation
+          </option>
+
+          <option value="follow-up">
+            Follow Up
+          </option>
+
+          <option value="procedure">
+            Procedure
+          </option>
+        </select>
+
+      </div>
+
+      {/* NOTES */}
+      <textarea
+        rows={4}
+        value={formData.notes}
+        placeholder="Appointment notes..."
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            notes: e.target.value,
+          })
+        }
+        className="
+        w-full
+        rounded-2xl
+        border border-gray-300
+        px-4 py-3
+        mb-6
+        focus:ring-2
+        focus:ring-blue-500
+        outline-none"
+      />
+
+      {/* BUTTONS */}
+      <div className="flex flex-col sm:flex-row gap-3">
+
+        <button
+          type="submit"
+          className="
+          flex-1
+          rounded-2xl
+          px-5 py-3
+          bg-gradient-to-r
+          from-green-600
+          to-emerald-600
+          text-white
+          font-semibold
+          shadow-lg
+          hover:shadow-xl
+          transition"
+        >
+          Save Appointment
+        </button>
+
+        <button
+          type="button"
+          onClick={resetForm}
+          className="
+          flex-1
+          rounded-2xl
+          px-5 py-3
+          bg-gray-100
+          text-gray-700
+          font-semibold
+          hover:bg-gray-200
+          transition"
+        >
+          Cancel
+        </button>
+
+      </div>
+    </form>
+  </div>
+)}
+
+{/* ================= STATUS TABS ================= */}
+<div
+  className="
+  mb-6
+  bg-white
+  rounded-2xl
+  border border-gray-200
+  shadow-sm
+  p-2
+  flex gap-2
+  overflow-x-auto"
+>
+  {[
+    'scheduled',
+    'ongoing',
+    'completed',
+    'cancelled',
+  ].map((tab) => (
+    <button
+      key={tab}
+      onClick={() =>
+        setAppointmentView(tab as any)
+      }
+      className={`
+      px-5 py-3
+      rounded-xl
+      font-semibold
+      capitalize
+      whitespace-nowrap
+      transition
+      ${
+        appointmentView === tab
+          ? 'bg-blue-600 text-white shadow-md'
+          : 'text-gray-500 hover:bg-gray-100'
+      }`}
+    >
+      {tab}
+    </button>
+  ))}
+</div>
+
+{/* ================= TABLE CARD OPEN ================= */}
+<div
+  className="
+  bg-white
+  rounded-3xl
+  border border-gray-200
+  shadow-xl
+  overflow-hidden"
+>
+ {/* ===================== APPOINTMENTS TABLE ===================== */}
+<div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+
+  {/* TABLE HEADER */}
+  <div className="px-6 py-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h2 className="text-xl font-bold text-gray-900">
+        Appointment List
+      </h2>
+
+      <p className="text-sm text-gray-500 mt-1">
+        Manage appointments, prescriptions and patient visits
+      </p>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <div className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-semibold">
+        {filteredAppointments.length} Records
+      </div>
+    </div>
+  </div>
+
+  {/* LOADING */}
+  {loading ? (
+    <div className="py-20 text-center">
+      <div className="inline-flex items-center gap-3 text-gray-500">
+        <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        Loading appointments...
+      </div>
+    </div>
+  ) : filteredAppointments.length === 0 ? (
+    /* EMPTY */
+    <div className="py-20 text-center">
+      <div className="text-5xl mb-4">📅</div>
+
+      <h3 className="text-lg font-semibold text-gray-800">
+        No appointments found
+      </h3>
+
+      <p className="text-gray-500 mt-2">
+        No records available for selected status
+      </p>
+    </div>
+  ) : (
+    <div className="overflow-x-auto">
+
+      <table className="min-w-full">
+
+        {/* TABLE HEADER */}
+        <thead className="bg-gray-50 border-b border-gray-100">
+          <tr>
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Patient
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Doctor
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Date & Time
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Type
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Status
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Payment
+            </th>
+
+            <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              Actions
+            </th>
+          </tr>
+        </thead>
+
+        {/* TABLE BODY */}
+        <tbody className="divide-y divide-gray-100">
+
+          {filteredAppointments.map((apt) => (
+
+            <tr
+              key={apt.id}
+              className="hover:bg-blue-50/40 transition"
+            >
+
+              {/* PATIENT */}
+              <td className="px-6 py-5">
+
+                <button
+                  onClick={() => {
+                    setSelectedPatient(apt);
+                    setShowPatientDetails(true);
+                  }}
+                  className="text-left group"
+                >
+                  <div className="font-semibold text-blue-700 group-hover:text-blue-900 group-hover:underline transition">
+                    {apt.patients?.first_name}{' '}
+                    {apt.patients?.last_name}
+                  </div>
+
+                  <div className="text-xs text-gray-500 mt-1">
+                    Click to view details
+                  </div>
+                </button>
+
+              </td>
+
+              {/* DOCTOR */}
+              <td className="px-6 py-5">
+                <div className="font-medium text-gray-800">
+                  Dr. {apt.users?.first_name}{' '}
+                  {apt.users?.last_name}
+                </div>
+              </td>
+
+              {/* DATE */}
+              <td className="px-6 py-5">
+                <div className="font-medium text-gray-800">
+                  {new Date(
+                    apt.appointment_date
+                  ).toLocaleDateString()}
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  {new Date(
+                    apt.appointment_date
+                  ).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
+              </td>
+
+              {/* TYPE */}
+              <td className="px-6 py-5">
+                <span className="inline-flex px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold capitalize">
+                  {apt.appointment_type}
+                </span>
+              </td>
+
+              {/* STATUS */}
+              <td className="px-6 py-5">
+
+                <span
+                  className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize
+                  ${
+                    apt.status === 'completed'
+                      ? 'bg-green-100 text-green-700'
+                      : apt.status === 'ongoing'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : apt.status === 'cancelled'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {apt.status}
+                </span>
+
+              </td>
+
+              {/* PAYMENT */}
+              <td className="px-6 py-5">
+
+                <span
+                  className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize
+                  ${
+                    apt
+                      .appointment_payments?.[0]
+                      ?.payment_status === 'paid'
+                      ? 'bg-green-100 text-green-700'
+                      : apt
+                          .appointment_payments?.[0]
+                          ?.payment_status ===
+                        'partial'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {apt.appointment_payments?.[0]
+                    ?.payment_status || 'Pending'}
+                </span>
+
+              </td>
+
+              {/* ACTIONS */}
+              <td className="px-6 py-5">
+
+                <div className="flex flex-wrap gap-2">
+
+                  {/* DOCTOR ACTIONS */}
+                  {userContext?.roleType ===
+                    'doctor' && (
+                    <>
+                      {apt.status ===
+                        'scheduled' && (
+                        <button
+                          onClick={() =>
+                            handleMarkOngoing(
+                              apt.id
+                            )
+                          }
+                          className="px-3 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-semibold transition"
                         >
-                          {apt.patients?.first_name} {apt.patients?.last_name}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">{apt.staff?.first_name} {apt.staff?.last_name}</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">{new Date(apt.appointment_date).toLocaleString()}</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm capitalize">{apt.appointment_type}</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">
-                          {apt.status === 'completed' && invoices[apt.id]
-                            ? `$${invoices[apt.id].amount?.toFixed(2) || '0.00'}`
-                            : `$${apt.fee_amount?.toFixed(2) || '-'}`}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm">
-                          {invoices[apt.id] ? (
-                            <div className="space-y-1">
-                              <span
-                                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                  invoices[apt.id].status === 'paid'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}
-                              >
-                                {invoices[apt.id].status}
-                              </span>
-                              {invoices[apt.id].amount_paid > 0 && (
-                                <div className="text-xs text-gray-600 mt-1">
-                                  Paid: ${invoices[apt.id].amount_paid?.toFixed(2) || '0.00'}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm space-y-2">
-                          {apt.status === 'scheduled' && userContext?.roleType === 'doctor' && (
-                            <>
-                              <button
-                                onClick={() => handleMarkOngoing(apt.id)}
-                                className="block text-yellow-600 hover:text-yellow-900 font-semibold"
-                              >
-                                Mark Ongoing
-                              </button>
-                              <button
-                                onClick={() => handleCompleteAppointment(apt.id)}
-                                className="block text-green-600 hover:text-green-900 font-semibold"
-                              >
-                                Complete
-                              </button>
-                            </>
-                          )}
-                          {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setVitalsAppointmentId(apt.id);
-                                  setShowVitalsForm(true);
-                                }}
-                                className="block text-blue-600 hover:text-blue-900 font-semibold"
-                              >
-                                📊 Enter Vitals
-                              </button>
-                              <button
-                                onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
-                                className="block text-blue-600 hover:text-blue-900 font-semibold"
-                              >
-                                Rx Write Prescription
-                              </button>
-                              <button
-                                onClick={() => handleViewPrescriptionsClick(apt.id)}
-                                className="block text-purple-600 hover:text-purple-900 font-semibold"
-                              >
-                                📋 View Prescriptions
-                              </button>
-                              <button
-                                onClick={() => handleCompleteAppointment(apt.id)}
-                                className="block text-green-600 hover:text-green-900 font-semibold"
-                              >
-                                Complete
-                              </button>
-                            </>
-                          )}
-                          {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
-                            ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
-                              <button
-                                onClick={() => handleCancelAppointment(apt.id)}
-                                className="block text-red-600 hover:text-red-900 font-semibold"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          {apt.status === 'completed' && userContext?.roleType === 'receptionist' && (
-                            <button
-                              onClick={async () => {
-                                setPaymentAppointmentId(apt.id);
-                                const invoiceAmount = await fetchInvoiceForAppointment(apt.id);
-                                const pendingAmt = invoiceAmount || apt.fee_amount || 0;
-                                setPendingAmount(pendingAmt);
-                                setPaymentData({
-                                  amount_paid: pendingAmt.toString(),
-                                  payment_method: 'cash',
-                                  payment_reference: '',
-                                  notes: '',
-                                });
-                                setShowPaymentForm(true);
-                              }}
-                              className="block text-blue-600 hover:text-blue-900 font-semibold"
-                            >
-                              Record Payment
-                            </button>
-                          )}
-                          {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
-                            <button
-                              onClick={() => handleViewPrescriptionsClick(apt.id)}
-                              className="block text-purple-600 hover:text-purple-900 font-semibold"
-                            >
-                              📋 View Prescriptions
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          Ongoing
+                        </button>
+                      )}
 
-              {/* Mobile Card View */}
-              <div className="lg:hidden divide-y divide-gray-200">
-                {tableData.map((apt) => (
-                  <div key={apt.id} className="p-4 hover:bg-gray-50 space-y-3">
-                    <div 
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setSelectedPatient(apt);
-                        setShowPatientDetails(true);
-                      }}
-                    >
-                      <h3 className="font-semibold text-blue-600 text-sm">
-                        {apt.patients?.first_name} {apt.patients?.last_name}
-                      </h3>
-                      <p className="text-xs text-gray-600">Doctor: {apt.staff?.first_name} {apt.staff?.last_name}</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <p className="text-gray-600">Date & Time</p>
-                        <p className="font-semibold">{new Date(apt.appointment_date).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Type</p>
-                        <p className="font-semibold capitalize">{apt.appointment_type}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Fee</p>
-                        <p className="font-semibold">
-                          {apt.status === 'completed' && invoices[apt.id]
-                            ? `$${invoices[apt.id].amount?.toFixed(2) || '0.00'}`
-                            : `$${apt.fee_amount?.toFixed(2) || '-'}`}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Payment</p>
-                        {invoices[apt.id] ? (
-                          <span
-                            className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                              invoices[apt.id].status === 'paid'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                          >
-                            {invoices[apt.id].status}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500 text-xs">-</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Mobile Actions */}
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {apt.status === 'scheduled' && userContext?.roleType === 'doctor' && (
+                      {(apt.status ===
+                        'scheduled' ||
+                        apt.status ===
+                          'ongoing') && (
                         <>
                           <button
-                            onClick={() => handleMarkOngoing(apt.id)}
-                            className="flex-1 text-xs px-2 py-1 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 font-semibold rounded"
+                            onClick={() =>
+                              handleWriteRx(
+                                apt.id
+                              )
+                            }
+                            className="px-3 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-semibold transition"
                           >
-                            Ongoing
+                            Rx
                           </button>
+
                           <button
-                            onClick={() => handleCompleteAppointment(apt.id)}
-                            className="flex-1 text-xs px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 font-semibold rounded"
+                            onClick={() =>
+                              handleViewRx(
+                                apt.id
+                              )
+                            }
+                            className="px-3 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-semibold transition"
+                          >
+                            Prescriptions
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setVitalsAppointmentId(
+                                apt.id
+                              );
+                              setShowVitalsForm(
+                                true
+                              );
+                            }}
+                            className="px-3 py-2 rounded-xl bg-sky-100 text-sky-700 hover:bg-sky-200 text-xs font-semibold transition"
+                          >
+                            Vitals
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              handleCompleteAppointment(
+                                apt.id
+                              )
+                            }
+                            className="px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 text-xs font-semibold transition"
                           >
                             Complete
                           </button>
                         </>
                       )}
-                      {apt.status === 'ongoing' && userContext?.roleType === 'doctor' && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setVitalsAppointmentId(apt.id);
-                              setShowVitalsForm(true);
-                            }}
-                            className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
-                          >
-                            Vitals
-                          </button>
-                          <button
-                            onClick={() => handleWritePrescription(apt.id, apt.patient_id)}
-                            className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
-                          >
-                            Rx
-                          </button>
-                          <button
-                            onClick={() => handleViewPrescriptionsClick(apt.id)}
-                            className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
-                          >
-                            View Rx
-                          </button>
-                          <button
-                            onClick={() => handleCompleteAppointment(apt.id)}
-                            className="flex-1 text-xs px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 font-semibold rounded"
-                          >
-                            Done
-                          </button>
-                        </>
-                      )}
-                      {(apt.status === 'scheduled' || apt.status === 'ongoing') &&
-                        ['receptionist', 'clinic_admin', 'branch_admin'].includes(userContext?.roleType || '') && (
-                          <button
-                            onClick={() => handleCancelAppointment(apt.id)}
-                            className="flex-1 text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      {apt.status === 'completed' && userContext?.roleType === 'receptionist' && (
-                        <button
-                          onClick={async () => {
-                            setPaymentAppointmentId(apt.id);
-                            const invoiceAmount = await fetchInvoiceForAppointment(apt.id);
-                            const pendingAmt = invoiceAmount || apt.fee_amount || 0;
-                            setPendingAmount(pendingAmt);
-                            setPaymentData({
-                              amount_paid: pendingAmt.toString(),
-                              payment_method: 'cash',
-                              payment_reference: '',
-                              notes: '',
-                            });
-                            setShowPaymentForm(true);
-                          }}
-                          className="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded"
-                        >
-                          Record Payment
-                        </button>
-                      )}
-                      {apt.status === 'completed' && userContext?.roleType === 'doctor' && (
-                        <button
-                          onClick={() => handleViewPrescriptionsClick(apt.id)}
-                          className="flex-1 text-xs px-2 py-1 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold rounded"
-                        >
-                          View Rx
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                    </>
+                  )}
+
+                  {/* RECEPTION / ADMIN CANCEL */}
+                  {[
+                    'receptionist',
+                    'clinic_admin',
+                    'branch_admin',
+                  ].includes(
+                    userContext?.roleType || ''
+                  ) &&
+                    (apt.status ===
+                      'scheduled' ||
+                      apt.status ===
+                        'ongoing') && (
+                      <button
+                        onClick={() =>
+                          handleCancelAppointment(
+                            apt.id
+                          )
+                        }
+                        className="px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 text-xs font-semibold transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+
+                  {/* PAYMENT */}
+                  {[
+                    'receptionist',
+                    'clinic_admin',
+                    'branch_admin',
+                  ].includes(
+                    userContext?.roleType || ''
+                  ) &&
+                    apt.status ===
+                      'completed' && (
+                      <button
+                        onClick={() =>
+                          handleOpenPayment(
+                            apt.id,
+                            apt.fee_amount
+                          )
+                        }
+                        className="px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-semibold transition"
+                      >
+                        Payment
+                      </button>
+                    )}
+                </div>
+
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
+{/* ===================== PATIENT DETAILS MODAL ===================== */}
+{showPatientDetails && selectedPatient && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+
+    <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Patient Details
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Patient profile and appointment information
+          </p>
         </div>
+
+        <button
+          onClick={() => {
+            setShowPatientDetails(false);
+            setSelectedPatient(null);
+          }}
+          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
+        >
+          ✕
+        </button>
       </div>
 
-      {/* Patient Details Modal */}
-      {showPatientDetails && selectedPatient && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg sm:text-2xl font-bold">Patient Details</h2>
-                <button
-                  onClick={() => setShowPatientDetails(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              {selectedPatient.patients && (
-                <div className="space-y-3 text-sm sm:text-base">
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Name:</strong></p>
-                    <p className="font-semibold">{selectedPatient.patients.first_name} {selectedPatient.patients.last_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Email:</strong></p>
-                    <p className="font-semibold">{selectedPatient.patients.email || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Phone:</strong></p>
-                    <p className="font-semibold">{selectedPatient.patients.phone || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Date of Birth:</strong></p>
-                    <p className="font-semibold">{selectedPatient.patients.date_of_birth || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Address:</strong></p>
-                    <p className="font-semibold break-words">{selectedPatient.patients.address || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Appointment Type:</strong></p>
-                    <p className="font-semibold">{selectedPatient.appointment_type}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-xs sm:text-sm"><strong>Appointment Date:</strong></p>
-                    <p className="font-semibold">{new Date(selectedPatient.appointment_date).toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
+      {/* BODY */}
+      <div className="p-6 space-y-6">
+
+        {/* PATIENT PROFILE CARD */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6">
+
+          <div className="flex items-center gap-4">
+
+            <div className="h-16 w-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold shadow">
+              {selectedPatient.patients?.first_name?.[0]}
+              {selectedPatient.patients?.last_name?.[0]}
+            </div>
+
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {selectedPatient.patients?.first_name}{' '}
+                {selectedPatient.patients?.last_name}
+              </h3>
+
+              <p className="text-sm text-gray-500">
+                Patient Information
+              </p>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Doctor Completion Modal */}
-      {showCompletionForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Complete Appointment</h2>
-              <form onSubmit={handleSubmitCompletion}>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Fee Amount *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={completionData.fee_amount}
-                    onChange={(e) => setCompletionData({ ...completionData, fee_amount: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="Enter fee amount"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Doctor Notes</label>
-                  <textarea
-                    value={completionData.notes_from_doctor}
-                    onChange={(e) => setCompletionData({ ...completionData, notes_from_doctor: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    rows={3}
-                    placeholder="Add any notes from the appointment"
-                  ></textarea>
-                </div>
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"
-                  >
-                    Complete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCompletionForm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
         </div>
-      )}
 
-      {/* Payment Recording Modal */}
-      {showPaymentForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Record Payment</h2>
-              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                <p className="text-sm font-semibold text-blue-900">Pending Amount: ${pendingAmount.toFixed(2)}</p>
-              </div>
-              <form onSubmit={handleRecordPayment}>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Amount Paid * (editable)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={paymentData.amount_paid}
-                    onChange={(e) => setPaymentData({ ...paymentData, amount_paid: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="Enter amount"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Payment Method</label>
-                  <select
-                    value={paymentData.payment_method}
-                    onChange={(e) => setPaymentData({ ...paymentData, payment_method: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="upi">UPI</option>
-                    <option value="cheque">Cheque</option>
-                  </select>
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Payment Reference</label>
-                  <input
-                    type="text"
-                    value={paymentData.payment_reference}
-                    onChange={(e) => setPaymentData({ ...paymentData, payment_reference: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="Transaction ID, Cheque No, etc."
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2">Notes</label>
-                  <textarea
-                    value={paymentData.notes}
-                    onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    rows={2}
-                    placeholder="Add any notes"
-                  ></textarea>
-                </div>
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"
-                  >
-                    Record Payment
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPaymentForm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* DETAILS GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-      {/* Write Prescription Modal */}
-      {showPrescriptionForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-900">💊 Write Prescription</h2>
-                <button
-                  onClick={() => setShowPrescriptionForm(false)}
-                  className="text-gray-500 hover:text-gray-700 text-3xl"
-                >
-                  ×
-                </button>
+          {/* CONTACT CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <h3 className="font-semibold text-gray-900 mb-4">
+              Contact Information
+            </h3>
+
+            <div className="space-y-4 text-sm">
+
+              <div>
+                <p className="text-gray-500 mb-1">
+                  Email
+                </p>
+
+                <p className="font-medium text-gray-900">
+                  {selectedPatient.patients?.email || '-'}
+                </p>
               </div>
 
-              <form onSubmit={handleSubmitPrescription}>
-                {/* Medicines Section */}
-                <div className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border-2 border-blue-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">💊 Add Medicines</h3>
-                    <button
-                      type="button"
-                      onClick={handleAddPrescriptionMedicine}
-                      className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition text-sm"
-                    >
-                      + Add Medicine
-                    </button>
-                  </div>
+              <div>
+                <p className="text-gray-500 mb-1">
+                  Phone
+                </p>
 
-                  <div className="space-y-4">
-                    {prescriptionMedicines.map((med, index) => (
-                      <div key={med.id} className="bg-white p-4 rounded-lg border-2 border-blue-100">
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="font-semibold text-gray-800">Medicine #{index + 1}</h4>
-                          {prescriptionMedicines.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePrescriptionMedicine(med.id)}
-                              className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="Medication Name *"
-                            value={med.medication_name}
-                            onChange={(e) => handlePrescriptionMedicineChange(med.id, 'medication_name', e.target.value)}
-                            required
-                            className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Dosage (e.g., 500mg) *"
-                            value={med.dosage}
-                            onChange={(e) => handlePrescriptionMedicineChange(med.id, 'dosage', e.target.value)}
-                            required
-                            className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Frequency (e.g., Twice daily) *"
-                            value={med.frequency}
-                            onChange={(e) => handlePrescriptionMedicineChange(med.id, 'frequency', e.target.value)}
-                            required
-                            className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input
-                            type="number"
-                            placeholder="Quantity *"
-                            value={med.quantity}
-                            onChange={(e) => handlePrescriptionMedicineChange(med.id, 'quantity', parseInt(e.target.value) || 0)}
-                            required
-                            min="1"
-                            className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Additional Notes</label>
-                  <textarea
-                    value={prescriptionData.notes}
-                    onChange={(e) => setPrescriptionData({ ...prescriptionData, notes: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="e.g., Take after food, Avoid dairy products"
-                  ></textarea>
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Create Prescription
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPrescriptionForm(false)}
-                    className="flex-1 px-4 py-3 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Prescriptions Modal */}
-      {showViewPrescriptions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-900">📋 Prescriptions</h2>
-                <button
-                  onClick={() => setShowViewPrescriptions(false)}
-                  className="text-gray-500 hover:text-gray-700 text-3xl"
-                >
-                  ×
-                </button>
-              </div>
-              {appointmentPrescriptions.length === 0 ? (
-                <p className="text-gray-500 text-lg">No prescriptions yet for this appointment.</p>
-              ) : (
-                <div className="space-y-8">
-                  {appointmentPrescriptions.map((presc: any) => (
-                    <div key={presc.id} className="lg:col-span-2">
-                      <div className="bg-white rounded-lg shadow-lg border-4 border-blue-200 overflow-hidden" id={`prescription-${presc.id}`}>
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
-                          <div className="text-center mb-4">
-                            <h3 className="text-2xl font-bold">💊 {presc.clinic_name || 'Clinic'}</h3>
-                            <sub>Registered Address: {presc.clinic_address || 'Not Available'}</sub>
-                            <sub> Postal Code: {presc.clinic_postal_code || ''}</sub>
-                            <sub> Phone: {presc.clinic_phone || '(+91) 000-0000'}</sub>
-                            <p className="text-sm text-blue-100">Professional Medical Prescription</p>
-                          </div>
-                          <div className="border-t border-blue-400 pt-3 text-xs text-blue-50 space-y-1">
-                            <div className="text-center mb-4">
-                              <sub>Branch: {presc.branch_name || 'Main Branch'}</sub>
-                              <sub> Address:{presc.branch_address || 'Not Available'}</sub>
-                              <sub> Phone: {presc.branch_phone || 'N/A'}</sub>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-8">
-                          {/* Prescribed By */}
-                          <table className="w-full border border-gray-300 mb-6">
-                            <tbody>
-                              <tr className="border-b">
-                                <td className="px-4 py-3 bg-gray-100 text-sm font-semibold text-gray-600 uppercase w-1/3">
-                                  Prescribed By
-                                </td>
-                                <td className="px-4 py-3 text-base font-semibold text-gray-900">
-                                  {presc.doctor_name || 'Dr. Name'}
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          {/* Patient Information and Vitals Side by Side */}
-                          <div className="mb-6 pb-4 border-b-2 border-gray-300 flex gap-0">
-                            {/* Patient Information - Left Side */}
-                            <div className="flex-1 pr-6">
-                              <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Patient Information</div>
-                              <div className="text-lg font-semibold text-gray-900">{presc.patient_name || 'Patient Name'}</div>
-                              <div className="text-sm text-gray-700 mt-1">📱 {presc.patient_phone || 'Phone Not Available'}</div>
-                              <div className="text-xs text-gray-600 mt-1">Rx ID: {presc.id?.substring(0, 8).toUpperCase()}</div>
-                            </div>
-
-                            {/* Vitals - Right Side Compact */}
-                            {presc.vitals && (Object.values(presc.vitals).some(v => v)) && (
-                              <div className="flex-1 border-l-2 border-gray-300 pl-6">
-                                <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold mb-2">Vitals</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {presc.vitals.blood_pressure_systolic && (
-                                    <div className="bg-blue-50 p-1.5 rounded border border-blue-200">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">BP:</span> <span className="font-bold text-gray-900">{presc.vitals.blood_pressure_systolic}/{presc.vitals.blood_pressure_diastolic}</span></div>
-                                    </div>
-                                  )}
-                                  {presc.vitals.heart_rate && (
-                                    <div className="bg-red-50 p-1.5 rounded border border-red-200">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">HR:</span> <span className="font-bold text-gray-900">{presc.vitals.heart_rate}</span></div>
-                                    </div>
-                                  )}
-                                  {presc.vitals.temperature && (
-                                    <div className="bg-orange-50 p-1.5 rounded border border-orange-200">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">T°:</span> <span className="font-bold text-gray-900">{presc.vitals.temperature}°</span></div>
-                                    </div>
-                                  )}
-                                  {presc.vitals.oxygen_saturation && (
-                                    <div className="bg-blue-50 p-1.5 rounded border border-blue-200">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">O₂:</span> <span className="font-bold text-gray-900">{presc.vitals.oxygen_saturation}%</span></div>
-                                    </div>
-                                  )}
-                                  {presc.vitals.weight && (
-                                    <div className="bg-gray-100 p-1.5 rounded border border-gray-300">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">Wt:</span> <span className="font-bold text-gray-900">{presc.vitals.weight}</span></div>
-                                    </div>
-                                  )}
-                                  {presc.vitals.height && (
-                                    <div className="bg-gray-100 p-1.5 rounded border border-gray-300">
-                                      <div className="text-xs"><span className="text-gray-600 font-semibold">Ht:</span> <span className="font-bold text-gray-900">{presc.vitals.height}</span></div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Medications Full Width */}
-                          <div className="mb-6">
-                            <div className="flex items-start gap-2 mb-3">
-                              <div className="text-3xl font-bold text-blue-600">℞</div>
-                              <div>
-                                <div className="text-sm text-gray-600 uppercase tracking-wide font-semibold">Medications</div>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              {presc.medications && Array.isArray(presc.medications) && presc.medications.length > 0 ? (
-                                presc.medications.map((med: any, idx: number) => (
-                                  <div key={idx} className="bg-blue-50 p-2 rounded border border-blue-200 text-sm">
-                                    <div className="font-bold text-gray-900">{med.medication_name}</div>
-                                    <div className="text-xs text-gray-700 mt-1">
-                                      <span className="bg-blue-100 px-2 py-0.5 rounded border border-blue-300 inline-block mr-2">{med.dosage}</span>
-                                      <span className="text-gray-600">Freq: {med.frequency}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-600 mt-1">Qty: {med.quantity}</div>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-gray-500 italic text-sm">No medications prescribed</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="my-6 border-t-2 border-dashed border-gray-400"></div>
-
-                          {/* Issued Date */}
-                          <div className="mb-6">
-                            <div className="text-xs text-gray-600 uppercase tracking-wide font-semibold mb-1">Issued Date</div>
-                            <div className="text-sm font-semibold text-gray-900">{new Date(presc.issued_date).toLocaleDateString()}</div>
-                          </div>
-
-                          {/* Doctor Signature Line */}
-                          <div className="mb-6 pt-4">
-                            <div className="border-t-2 border-gray-800 w-40 mb-2"></div>
-                            <div className="text-xs text-gray-600 font-semibold">Doctor's Signature</div>
-                          </div>
-
-                          {/* Notes */}
-                          {presc.notes && (
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded text-xs text-gray-700">
-                              <strong>📝 Notes:</strong> {presc.notes}
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-3 pt-4">
-                            <button 
-                              onClick={() => generatePrescriptionPDF(presc.id, presc.patient_name)}
-                              className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
-                            >
-                              🖨️ Print
-                            </button>
-                            <button 
-                              onClick={() => setShowViewPrescriptions(false)}
-                              className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition text-sm"
-                            >
-                              🗑️ Close
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="bg-gray-100 px-8 py-3 text-center text-xs text-gray-600 border-t border-gray-300">
-                          <div>This is a digitally issued prescription. Valid for 12 months from issue date.</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Vitals Form Modal */}
-      {showVitalsForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-900">📊 Enter Vital Signs</h2>
-                <button
-                  onClick={() => setShowVitalsForm(false)}
-                  className="text-gray-500 hover:text-gray-700 text-3xl"
-                >
-                  ×
-                </button>
+                <p className="font-medium text-gray-900">
+                  {selectedPatient.patients?.phone || '-'}
+                </p>
               </div>
 
-              <form onSubmit={handleSaveVitals}>
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Blood Pressure */}
-                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                    <label className="block text-sm font-semibold text-blue-900 mb-3">
-                      🫀 Blood Pressure (mmHg)
-                    </label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="number"
-                        placeholder="Systolic"
-                        value={vitalsData.blood_pressure_systolic}
-                        onChange={(e) =>
-                          setVitalsData({
-                            ...vitalsData,
-                            blood_pressure_systolic: e.target.value,
-                          })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-gray-600 font-bold">/</span>
-                      <input
-                        type="number"
-                        placeholder="Diastolic"
-                        value={vitalsData.blood_pressure_diastolic}
-                        onChange={(e) =>
-                          setVitalsData({
-                            ...vitalsData,
-                            blood_pressure_diastolic: e.target.value,
-                          })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+              <div>
+                <p className="text-gray-500 mb-1">
+                  Address
+                </p>
 
-                  {/* Heart Rate */}
-                  <div className="bg-red-50 p-4 rounded-lg border-2 border-red-200">
-                    <label className="block text-sm font-semibold text-red-900 mb-3">
-                      ❤️ Heart Rate (bpm)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="60-100 bpm"
-                      value={vitalsData.heart_rate}
-                      onChange={(e) =>
-                        setVitalsData({ ...vitalsData, heart_rate: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
+                <p className="font-medium text-gray-900">
+                  {selectedPatient.patients?.address || '-'}
+                </p>
+              </div>
 
-                  {/* Temperature */}
-                  <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
-                    <label className="block text-sm font-semibold text-orange-900 mb-3">
-                      🌡️ Temperature
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="36.5"
-                        step="0.1"
-                        value={vitalsData.temperature}
-                        onChange={(e) =>
-                          setVitalsData({ ...vitalsData, temperature: e.target.value })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                      <select
-                        value={vitalsData.temperature_unit}
-                        onChange={(e) =>
-                          setVitalsData({
-                            ...vitalsData,
-                            temperature_unit: e.target.value as 'C' | 'F',
-                          })
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      >
-                        <option value="C">°C</option>
-                        <option value="F">°F</option>
-                      </select>
-                    </div>
-                  </div>
+            </div>
+          </div>
 
-                  {/* Oxygen Saturation */}
-                  <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                    <label className="block text-sm font-semibold text-green-900 mb-3">
-                      💨 O₂ Saturation (%)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="95-100%"
-                      value={vitalsData.oxygen_saturation}
-                      onChange={(e) =>
-                        setVitalsData({
-                          ...vitalsData,
-                          oxygen_saturation: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
+          {/* PERSONAL CARD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
 
-                  {/* Weight */}
-                  <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                    <label className="block text-sm font-semibold text-purple-900 mb-3">
-                      ⚖️ Weight
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="70.5"
-                        step="0.1"
-                        value={vitalsData.weight}
-                        onChange={(e) =>
-                          setVitalsData({ ...vitalsData, weight: e.target.value })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <select
-                        value={vitalsData.weight_unit}
-                        onChange={(e) =>
-                          setVitalsData({
-                            ...vitalsData,
-                            weight_unit: e.target.value as 'kg' | 'lbs',
-                          })
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="lbs">lbs</option>
-                      </select>
-                    </div>
-                  </div>
+            <h3 className="font-semibold text-gray-900 mb-4">
+              Personal Details
+            </h3>
 
-                  {/* Height */}
-                  <div className="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
-                    <label className="block text-sm font-semibold text-indigo-900 mb-3">
-                      📏 Height
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="175"
-                        step="0.1"
-                        value={vitalsData.height}
-                        onChange={(e) =>
-                          setVitalsData({ ...vitalsData, height: e.target.value })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <select
-                        value={vitalsData.height_unit}
-                        onChange={(e) =>
-                          setVitalsData({
-                            ...vitalsData,
-                            height_unit: e.target.value as 'cm' | 'inches',
-                          })
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="cm">cm</option>
-                        <option value="inches">inches</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-4 text-sm">
 
-                <div className="flex gap-4 mt-8">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
-                  >
-                    ✓ Save Vitals
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowVitalsForm(false)}
-                    className="flex-1 px-4 py-3 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+              <div>
+                <p className="text-gray-500 mb-1">
+                  Date of Birth
+                </p>
+
+                <p className="font-medium text-gray-900">
+                  {selectedPatient.patients
+                    ?.date_of_birth
+                    ? new Date(
+                        selectedPatient.patients.date_of_birth
+                      ).toLocaleDateString()
+                    : '-'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-gray-500 mb-1">
+                  Patient ID
+                </p>
+
+                <p className="font-medium text-gray-900">
+                  {selectedPatient.patients?.id ||
+                    '-'}
+                </p>
+              </div>
+
             </div>
           </div>
         </div>
-      )}
+
+        {/* APPOINTMENT CARD */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+
+          <div className="flex items-center justify-between mb-5">
+
+            <h3 className="font-semibold text-gray-900">
+              Appointment Details
+            </h3>
+
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold capitalize
+              ${
+                selectedPatient.status ===
+                'completed'
+                  ? 'bg-green-100 text-green-700'
+                  : selectedPatient.status ===
+                    'ongoing'
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : selectedPatient.status ===
+                    'cancelled'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}
+            >
+              {selectedPatient.status}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+
+            <div>
+              <p className="text-gray-500 mb-1">
+                Doctor
+              </p>
+
+              <p className="font-medium text-gray-900">
+                Dr.{' '}
+                {selectedPatient.users
+                  ?.first_name}{' '}
+                {selectedPatient.users
+                  ?.last_name}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-gray-500 mb-1">
+                Appointment Type
+              </p>
+
+              <p className="font-medium text-gray-900 capitalize">
+                {selectedPatient.appointment_type}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-gray-500 mb-1">
+                Date & Time
+              </p>
+
+              <p className="font-medium text-gray-900">
+                {new Date(
+                  selectedPatient.appointment_date
+                ).toLocaleString()}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-gray-500 mb-1">
+                Notes
+              </p>
+
+              <p className="font-medium text-gray-900">
+                {selectedPatient.notes || '-'}
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* FOOTER */}
+      <div className="px-6 py-5 border-t border-gray-100 bg-gray-50 flex justify-end">
+
+        <button
+          onClick={() => {
+            setShowPatientDetails(false);
+            setSelectedPatient(null);
+          }}
+          className="px-5 py-3 rounded-2xl bg-gray-900 text-white font-semibold hover:bg-black transition shadow-sm"
+        >
+          Close
+        </button>
+
+      </div>
     </div>
-  );
-}
+  </div>
+)}
+{/* ===================== COMPLETE APPOINTMENT MODAL ===================== */}
+{showCompletionForm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+
+    <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Complete Appointment
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Finalize consultation and record doctor notes
+          </p>
+        </div>
+
+        <button
+          onClick={() =>
+            setShowCompletionForm(false)
+          }
+          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSubmitCompletion}
+        className="p-6 space-y-6"
+      >
+
+        {/* CONSULTATION FEE CARD */}
+        <div className="rounded-2xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                Consultation Fee
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Enter total consultation charges
+              </p>
+            </div>
+
+            <div className="text-2xl">
+              💰
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={completionData.fee_amount}
+              onChange={(e) =>
+                setCompletionData({
+                  ...completionData,
+                  fee_amount: e.target.value,
+                })
+              }
+              placeholder="Enter consultation fee"
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* NOTES */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+          <div className="mb-4">
+            <h3 className="font-semibold text-gray-900">
+              Doctor Notes
+            </h3>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Clinical notes or consultation summary
+            </p>
+          </div>
+
+          <textarea
+            rows={5}
+            value={
+              completionData.notes_from_doctor
+            }
+            onChange={(e) =>
+              setCompletionData({
+                ...completionData,
+                notes_from_doctor:
+                  e.target.value,
+              })
+            }
+            placeholder="Enter consultation notes..."
+            className="w-full rounded-2xl border border-gray-300 px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+
+          <button
+            type="submit"
+            className="flex-1 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3.5 font-semibold shadow-md hover:shadow-lg hover:from-green-700 hover:to-emerald-700 transition"
+          >
+            ✓ Complete Appointment
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowCompletionForm(false)
+            }
+            className="flex-1 rounded-2xl border border-gray-300 bg-white text-gray-700 py-3.5 font-semibold hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+{/* ===================== PAYMENT MODAL ===================== */}
+{showPaymentForm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+
+    <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-cyan-50">
+
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Record Payment
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Capture appointment payment and transaction details
+          </p>
+        </div>
+
+        <button
+          onClick={() =>
+            setShowPaymentForm(false)
+          }
+          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleRecordPayment}
+        className="p-6 space-y-6"
+      >
+
+        {/* PENDING AMOUNT CARD */}
+        <div className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-5">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                Pending Amount
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Outstanding consultation payment
+              </p>
+            </div>
+
+            <div className="text-3xl">
+              ₹
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <input
+              value={pendingAmount}
+              readOnly
+              className="w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-xl font-bold text-blue-700"
+            />
+          </div>
+        </div>
+
+        {/* AMOUNT + METHOD */}
+        <div className="grid md:grid-cols-2 gap-5">
+
+          {/* AMOUNT PAID */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Amount Paid *
+            </label>
+
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={paymentData.amount_paid}
+              onChange={(e) =>
+                setPaymentData({
+                  ...paymentData,
+                  amount_paid:
+                    e.target.value,
+                })
+              }
+              placeholder="Enter amount"
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* PAYMENT METHOD */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Payment Method
+            </label>
+
+            <select
+              value={
+                paymentData.payment_method
+              }
+              onChange={(e) =>
+                setPaymentData({
+                  ...paymentData,
+                  payment_method:
+                    e.target.value,
+                })
+              }
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="cash">
+                Cash
+              </option>
+
+              <option value="upi">
+                UPI
+              </option>
+
+              <option value="card">
+                Card
+              </option>
+
+              <option value="cheque">
+                Cheque
+              </option>
+
+              <option value="bank_transfer">
+                Bank Transfer
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {/* REFERENCE */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Payment Reference
+          </label>
+
+          <input
+            value={
+              paymentData.payment_reference
+            }
+            onChange={(e) =>
+              setPaymentData({
+                ...paymentData,
+                payment_reference:
+                  e.target.value,
+              })
+            }
+            placeholder="Transaction ID / Reference No."
+            className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* NOTES */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Notes
+          </label>
+
+          <textarea
+            rows={4}
+            value={paymentData.notes}
+            onChange={(e) =>
+              setPaymentData({
+                ...paymentData,
+                notes: e.target.value,
+              })
+            }
+            placeholder="Additional payment remarks..."
+            className="w-full rounded-2xl border border-gray-300 px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+
+          <button
+            type="submit"
+            className="flex-1 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3.5 font-semibold shadow-md hover:shadow-lg hover:from-blue-700 hover:to-cyan-700 transition"
+          >
+            ✓ Save Payment
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowPaymentForm(false)
+            }
+            className="flex-1 rounded-2xl border border-gray-300 bg-white text-gray-700 py-3.5 font-semibold hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+{/* ===================== VITALS MODAL ===================== */}
+{showVitalsForm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-auto p-4">
+
+    <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-cyan-50">
+
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Patient Vitals
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Record and manage patient vital signs
+          </p>
+        </div>
+
+        <button
+          onClick={() =>
+            setShowVitalsForm(false)
+          }
+          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSaveVitals}
+        className="p-6 space-y-6"
+      >
+
+        {/* BLOOD PRESSURE */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                Blood Pressure
+              </h3>
+
+              <p className="text-sm text-gray-500">
+                Systolic / Diastolic
+              </p>
+            </div>
+
+            <div className="text-2xl">
+              🩺
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+
+            <input
+              type="number"
+              placeholder="Systolic (mmHg)"
+              value={
+                vitalsData.blood_pressure_systolic
+              }
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  blood_pressure_systolic:
+                    e.target.value,
+                })
+              }
+              className="rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+
+            <input
+              type="number"
+              placeholder="Diastolic (mmHg)"
+              value={
+                vitalsData.blood_pressure_diastolic
+              }
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  blood_pressure_diastolic:
+                    e.target.value,
+                })
+              }
+              className="rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+
+          </div>
+        </div>
+
+        {/* HEART + OXYGEN */}
+        <div className="grid md:grid-cols-2 gap-5">
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Heart Rate (BPM)
+            </label>
+
+            <input
+              type="number"
+              placeholder="Heart Rate"
+              value={vitalsData.heart_rate}
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  heart_rate:
+                    e.target.value,
+                })
+              }
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Oxygen Saturation (%)
+            </label>
+
+            <input
+              type="number"
+              placeholder="SpO₂"
+              value={
+                vitalsData.oxygen_saturation
+              }
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  oxygen_saturation:
+                    e.target.value,
+                })
+              }
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+        </div>
+
+        {/* TEMP + WEIGHT */}
+        <div className="grid md:grid-cols-2 gap-5">
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Temperature (°C)
+            </label>
+
+            <input
+              type="number"
+              step="0.1"
+              placeholder="Temperature"
+              value={vitalsData.temperature}
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  temperature:
+                    e.target.value,
+                })
+              }
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Weight (Kg)
+            </label>
+
+            <input
+              type="number"
+              step="0.1"
+              placeholder="Weight"
+              value={vitalsData.weight}
+              onChange={(e) =>
+                setVitalsData({
+                  ...vitalsData,
+                  weight:
+                    e.target.value,
+                })
+              }
+              className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+        </div>
+
+        {/* HEIGHT */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Height (cm)
+          </label>
+
+          <input
+            type="number"
+            step="0.1"
+            placeholder="Height"
+            value={vitalsData.height}
+            onChange={(e) =>
+              setVitalsData({
+                ...vitalsData,
+                height: e.target.value,
+              })
+            }
+            className="w-full rounded-2xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          />
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+
+          <button
+            type="submit"
+            className="flex-1 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 text-white py-3.5 font-semibold shadow-md hover:shadow-lg hover:from-sky-700 hover:to-cyan-700 transition"
+          >
+            ✓ Save Vitals
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowVitalsForm(false)
+            }
+            className="flex-1 rounded-2xl border border-gray-300 bg-white text-gray-700 py-3.5 font-semibold hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+  </div>
+);
+</div>
+</div>
+);}

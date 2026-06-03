@@ -1,6 +1,5 @@
 'use client';
 
-import Header from '@/components/Header';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -105,15 +104,12 @@ export default function InvoiceViewPage() {
   };
 
   const handlePrint = () => {
-  setTimeout(() => {
     window.print();
-  }, 300);
 };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-100">
-        <Header />
 
         <div className="mx-auto max-w-7xl p-4 md:p-6">
           <div className="animate-pulse rounded-3xl bg-white p-8 shadow-sm">
@@ -138,7 +134,6 @@ export default function InvoiceViewPage() {
   if (!sale) {
     return (
       <div className="min-h-screen bg-slate-100">
-        <Header />
 
         <div className="flex h-[70vh] items-center justify-center">
           <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
@@ -166,37 +161,66 @@ export default function InvoiceViewPage() {
 
   return (
     <div className="bg-slate-100 print:bg-white">
-            <style jsx global>{`
-        @media print {
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
 
-          html,
-          body {
-            height: auto !important;
-            overflow: visible !important;
-          }
+      <style jsx global>{`
+  @media print {
 
-          table {
-            page-break-inside: auto;
-          }
+    html,
+    body {
+      background: white !important;
+      overflow: visible !important;
+      height: auto !important;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
+    body * {
+      visibility: hidden;
+    }
 
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>  
+    #print-invoice,
+    #print-invoice * {
+      visibility: visible;
+    }
+
+    #print-invoice {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      background: white;
+      margin: 0;
+      padding: 0;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tfoot {
+      display: table-footer-group;
+    }
+  }
+`}</style>
       
       <div className="print:hidden">
-        <Header />
       </div>
       <main className="mx-auto max-w-7xl p-4 md:p-6">
         {/* Top Action Bar */}
@@ -242,8 +266,10 @@ export default function InvoiceViewPage() {
         </div>
 
         {/* Main Invoice */}
-        <div className="rounded-[28px] border border-gray-200 bg-white shadow-sm print:rounded-none print:border-none print:shadow-none"></div>
-          {/* Invoice Header */}
+        <div
+  id="print-invoice"
+  className="rounded-[28px] border border-gray-200 bg-white shadow-sm print:rounded-none print:border-none print:shadow-none"
+></div>
           <div className="border-b border-gray-100 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 text-white md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div>
@@ -624,8 +650,9 @@ export default function InvoiceViewPage() {
                 unless approved by management.
               </p>
             </div>
-          </div>
-      </main>
+          </div> {/* print-invoice */}
+
+</main>
     </div>
   );
 }

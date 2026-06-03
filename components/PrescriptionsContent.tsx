@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Activity, SkipBack } from 'lucide-react';
+import { getDashboardUrl } from '@/lib/utils/dashboard';
+import { useRouter } from 'next/navigation';
+
 
 interface Medicine {
   id: string;
@@ -72,6 +76,7 @@ interface Patient {
 
 export function PrescriptionsContent() {
     // Clinic and branch info from localStorage
+    const router = useRouter();
     const [clinicInfo, setClinicInfo] = useState<{
       name: string;
       branch: string;
@@ -361,10 +366,76 @@ export function PrescriptionsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Prescription Management</h1>
-        <p className="mt-2 text-gray-600">Search, view, and manage patient prescriptions</p>
+ {/* HERO */}
+
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl mb-8">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Activity size={16} />
+              MediQuick Rx
+            </div>
+
+            <p className="mt-3 text-blue-100 max-w-2xl">
+               Prescription Management
+            </p>
+            <p className="mt-2 text-blue-100">
+                Search, view, and manage patient prescriptions
+            </p>
+          </div>
+
+{/* ================= HEADER ================= */}
+<div className="mb-8">
+
+  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+
+    {/* TODAY CARD */}
+    <div
+      className="bg-gradient-to-r from-blue-50 to-indigo-50
+      border border-blue-100
+      rounded-3xl px-5 py-4
+      shadow-sm"
+    >
+      <div className="text-xs uppercase tracking-wide text-blue-600 font-semibold">
+        Today
       </div>
+
+      <div className="mt-1 text-lg font-bold text-gray-900">
+        {new Date().toLocaleDateString('en-IN', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+        </div>
+      </div>
+
+
+           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+
+            
+            <div className="text-3xl font-bold mt-2">
+            <button
+              onClick={() => router.push(getDashboardUrl())}        
+              //onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+               <SkipBack size={16} />
+               Dashboard
+            </button>
+            </div>
+          </div>
+
 
       {showForm && (
         <div className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg p-8 border-2 border-blue-200">

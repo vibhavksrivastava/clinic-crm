@@ -1,26 +1,23 @@
 import { supabase } from '@/lib/db/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyPassword, hashPassword } from '@/lib/auth';
+import { isValidEmail, validatePasswordStrength } from '@/lib/auth/utils';
 import {
-  hashPassword,
-  verifyPassword,
-  createLoginResponse,
-  isValidEmail,
   checkLoginAttempts,
   recordLoginAttempt,
   clearLoginAttempts,
-  validatePasswordStrength,
-} from '@/lib/auth';
-import { getUserByEmail, getOrganization, getBranch } from '@/lib/db/multi_tenant_utils';
+} from '@/lib/auth/login-attempts';
+import { getUserByEmail } from '@/lib/auth/user';
+import { createLoginResponse } from '@/lib/auth/response';
 
 /**
  * POST /api/auth/login
- * Login user with email and password
  */
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, organizationId, branchId } = await request.json();
+    const { email, password, organizationId, branchId } =
+      await request.json();
 
-    // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -35,11 +32,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check login attempts
+    // ✅ login attempts check (FIXED TYPE USAGE)
     const attemptCheck = checkLoginAttempts(email);
-    if (!attemptCheck.allowed) {
+
+    if (!attemptCheck?.allowed) {
       return NextResponse.json(
-        { error: attemptCheck.message },
+        { error: attemptCheck?.message || 'Too many attempts' },
         { status: 429 }
       );
     }
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !userData) {
-      recordLoginAttempt(email);
+      recordLoginAttempt(email, false);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -61,32 +59,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
-    const passwordValid = await verifyPassword(password, userData.password_hash);
+    const passwordValid = await verifyPassword(
+      password,
+      userData.password_hash
+    );
+
     if (!passwordValid) {
-      recordLoginAttempt(email);
+      recordLoginAttempt(email, false);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // Validate organization and branch if provided
+    // Org validation
     if (organizationId && userData.organization_id !== organizationId) {
+      recordLoginAttempt(email, false);
       return NextResponse.json(
         { error: 'Invalid organization' },
         { status: 403 }
       );
     }
 
+    // Branch validation
     if (branchId && userData.branch_id !== branchId) {
+      recordLoginAttempt(email, false);
       return NextResponse.json(
         { error: 'Invalid branch' },
         { status: 403 }
       );
     }
 
-    // Fetch user's organization and branch
-
+    // Fetch organization
     const { data: orgRaw, error: orgError } = await supabase
       .from('organizations')
       .select('*')
@@ -100,27 +104,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Map logo_url to logoUrl for frontend compatibility
     const organization = {
       ...orgRaw,
       logoUrl: orgRaw.logo_url || undefined,
     };
 
+    // Fetch branch
     let branch = null;
     if (userData.branch_id) {
-      const { data: branchData, error: branchError } = await supabase
+      const { data: branchData } = await supabase
         .from('branches')
         .select('*')
         .eq('id', userData.branch_id)
         .single();
 
-      if (!branchError) {
-        branch = branchData;
-      }
+      branch = branchData || null;
     }
 
-    // Fetch user's role
-    let userWithRole = { ...userData };
+    // Fetch role
+    let role = null;
     if (userData.role_id) {
       const { data: roleData } = await supabase
         .from('roles')
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (roleData) {
-        userWithRole.role = {
+        role = {
           id: roleData.id,
           roleType: roleData.role_type || 'user',
           permissions: roleData.permissions || [],
@@ -138,55 +140,67 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Transform user data from snake_case (database) to camelCase (frontend)
+    // transform user
     const transformedUser = {
-      id: userWithRole.id,
-      email: userWithRole.email,
-      firstName: userWithRole.first_name,
-      lastName: userWithRole.last_name,
-      phone: userWithRole.phone,
-      profilePictureUrl: userWithRole.profile_picture_url,
-      specialization: userWithRole.specialization,
-      licenseNumber: userWithRole.license_number,
-      roleId: userWithRole.role_id,
-      organizationId: userWithRole.organization_id,
-      branchId: userWithRole.branch_id,
-      userStatus: userWithRole.user_status,
-      lastLogin: userWithRole.last_login,
-      loginAttempts: userWithRole.login_attempts,
-      lockedUntil: userWithRole.locked_until,
-      createdAt: userWithRole.created_at,
-      updatedAt: userWithRole.updated_at,
-      role: userWithRole.role,
+      id: userData.id,
+      email: userData.email,
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      phone: userData.phone,
+      profilePictureUrl: userData.profile_picture_url,
+      specialization: userData.specialization,
+      licenseNumber: userData.license_number,
+      roleId: userData.role_id,
+      organizationId: userData.organization_id,
+      branchId: userData.branch_id,
+      userStatus: userData.user_status,
+      lastLogin: userData.last_login,
+      loginAttempts: userData.login_attempts,
+      lockedUntil: userData.locked_until,
+      createdAt: userData.created_at,
+      updatedAt: userData.updated_at,
+      role,
     };
 
-    // Create login response
-    const response = await createLoginResponse(transformedUser, organization, branch);
+    // =========================
+    // FIXED FLOW ORDER
+    // =========================
 
-    // Clear login attempts on success
+    recordLoginAttempt(email, true);
     clearLoginAttempts(email);
 
-    // Update last login
     await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })
       .eq('id', userData.id);
 
-    // Create response with token cookie
-    const res = NextResponse.json(response, { status: 200 });
-    
-    // Set secure HTTP-only cookie
-    res.cookies.set({
+    const loginResponse = await createLoginResponse(
+      email,
+      organization,
+      branch ?? null
+    );
+
+    const response = NextResponse.json(
+      {
+        user: transformedUser,
+        organization,
+        branch,
+        token: loginResponse.token,
+      },
+      { status: 200 }
+    );
+
+    response.cookies.set({
       name: 'clinic_auth',
-      value: response.token,
+      value: loginResponse.token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours
+      maxAge: 24 * 60 * 60,
       path: '/',
     });
 
-    return res;
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
@@ -197,8 +211,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * POST /api/auth/register
- * Register a new organization and super admin user
+ * REGISTER
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -216,10 +229,9 @@ export async function PUT(request: NextRequest) {
       country,
     } = await request.json();
 
-    // Validate input
     if (!organizationName || !email || !password) {
       return NextResponse.json(
-        { error: 'Organization name, email, and password are required' },
+        { error: 'Required fields missing' },
         { status: 400 }
       );
     }
@@ -238,124 +250,94 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.valid) {
-      return NextResponse.json(
-        { error: 'Password is too weak', feedback: passwordValidation.feedback },
-        { status: 400 }
-      );
-    }
+    const isValidPassword = validatePasswordStrength(password);
 
-    // Check if user already exists
+if (!isValidPassword) {
+  return NextResponse.json(
+    {
+      error: 'Weak password',
+      feedback: [
+        'Password must be at least 8 characters',
+        'Include uppercase, lowercase, number',
+      ],
+    },
+    { status: 400 }
+  );
+}
+
     const existingUser = await getUserByEmail(email);
+
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already registered' },
+        { error: 'User already exists' },
         { status: 409 }
       );
     }
 
-    // Create organization
-    const { data: organization, error: orgError } = await supabase
+    const { data: organization } = await supabase
       .from('organizations')
       .insert({
         name: organizationName,
         email: organizationEmail,
-        phone: phone,
-        address: address,
-        city: city,
-        country: country,
+        phone,
+        address,
+        city,
+        country,
         subscription_plan: 'free',
       })
       .select()
       .single();
 
-    if (orgError || !organization) {
-      throw new Error(orgError?.message || 'Failed to create organization');
-    }
-
-    // Create super admin role
-    const { data: superAdminRole, error: roleError } = await supabase
-      .from('roles')
+      const { data: branch } = await supabase
+      .from('branches')
       .insert({
-        name: 'Super Admin',
-        role_type: 'super_admin',
-        description: 'Full system access',
-        permissions: [
-          'manage_organization',
-          'manage_branches',
-          'manage_staff',
-          'manage_patients',
-          'manage_appointments',
-          'manage_prescriptions',
-          'manage_pharmacy',
-          'manage_invoices',
-          'manage_roles',
-          'manage_billing',
-        ],
-        is_system_role: true,
-        organization_id: null,
+        name: organizationName,
+        email: organizationEmail,
+        phone,
+        address,
+        city,
+        country,
+        subscription_plan: 'free',
       })
       .select()
       .single();
 
-    if (roleError) {
-      throw new Error(roleError?.message || 'Failed to create role');
-    }
+    const { data: role } = await supabase
+      .from('roles')
+      .insert({
+        name: 'Super Admin',
+        role_type: 'super_admin',
+        permissions: ['manage_all'],
+        is_system_role: true,
+      })
+      .select()
+      .single();
 
-    // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create user (super admin)
-    const { data: user, error: userError } = await supabase
+    const { data: user } = await supabase
       .from('users')
       .insert({
-        email: email,
+        email,
         password_hash: passwordHash,
         first_name: firstName,
         last_name: lastName,
-        phone: phone,
-        role_id: superAdminRole.id,
+        phone,
+        role_id: role.id,
         organization_id: organization.id,
         user_status: 'active',
       })
       .select()
       .single();
 
-    if (userError || !user) {
-      throw new Error(userError?.message || 'Failed to create user');
-    }
-
-    // Create login response
-    const userWithRole = { 
-      id: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      phone: user.phone,
-      profilePictureUrl: user.profile_picture_url,
-      specialization: user.specialization,
-      licenseNumber: user.license_number,
-      roleId: user.role_id,
-      organizationId: user.organization_id,
-      branchId: user.branch_id,
-      userStatus: user.user_status,
-      lastLogin: user.last_login,
-      loginAttempts: user.login_attempts,
-      lockedUntil: user.locked_until,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at,
-      role: {
-        id: superAdminRole.id,
-        roleType: superAdminRole.role_type,
-        name: superAdminRole.name,
-        permissions: superAdminRole.permissions || [],
-        isSystemRole: superAdminRole.is_system_role || false,
-        createdAt: superAdminRole.created_at,
-        updatedAt: superAdminRole.updated_at,
-      }
-    };
-    const loginResponse = await createLoginResponse(userWithRole, organization, undefined);
+    const loginResponse = await createLoginResponse(
+      {
+        ...user,
+        role,
+      },
+      organization,
+      branch ?? null
+    );
 
     const response = NextResponse.json(
       {
@@ -365,7 +347,6 @@ export async function PUT(request: NextRequest) {
       { status: 201 }
     );
 
-    // Set secure HTTP-only cookie
     response.cookies.set({
       name: 'clinic_auth',
       value: loginResponse.token,
@@ -380,38 +361,26 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Registration failed' },
+      { error: 'Registration failed' },
       { status: 500 }
     );
   }
 }
 
 /**
- * POST /api/auth/logout
- * Logout user by clearing session
+ * LOGOUT
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const response = NextResponse.json(
-      { message: 'Logged out successfully' },
-      { status: 200 }
-    );
+export async function DELETE() {
+  const response = NextResponse.json({
+    message: 'Logged out',
+  });
 
-    // Clear auth cookie
-    response.cookies.set({
-      name: 'clinic_auth',
-      value: '',
-      httpOnly: true,
-      maxAge: 0,
-      path: '/',
-    });
+  response.cookies.set({
+    name: 'clinic_auth',
+    value: '',
+    maxAge: 0,
+    path: '/',
+  });
 
-    return response;
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Logout failed' },
-      { status: 500 }
-    );
-  }
+  return response;
 }

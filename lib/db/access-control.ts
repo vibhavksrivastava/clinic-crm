@@ -1,106 +1,100 @@
-import { jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-key-change-in-production'
-);
 
-export interface UserContext {
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'your-secret-key';
+
+export type UserContext = {
   userId: string;
   email: string;
-  organizationId: string;
-  branchId?: string;
   roleType: string;
-  permissions: string[];
-}
+  organizationId?: string;
+  branchId?: string;
+  permissions?: string[];
+};
 
-/**
- * Extract and verify JWT token from request, return user context
- * Returns null if token is invalid or missing
- */
-export async function getUserContext(request: NextRequest): Promise<UserContext | null> {
+export async function getUserContext(
+  request: NextRequest
+): Promise<UserContext | null> {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    let token =
+      request.cookies.get('authToken')?.value;
+
+    // fallback to Authorization header
+    if (!token) {
+      const authHeader =
+        request.headers.get('authorization');
+
+      if (
+        authHeader &&
+        authHeader.startsWith('Bearer ')
+      ) {
+        token = authHeader.replace(
+          'Bearer ',
+          ''
+        );
+      }
+    }
+
+    if (!token) {
+      console.log('❌ No token');
       return null;
     }
 
-    const token = authHeader.slice(7);
-    const verified = await jwtVerify(token, JWT_SECRET);
-    const payload = verified.payload as any;
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    ) as unknown as UserContext;
 
     return {
-      userId: payload.userId,
-      email: payload.email,
-      organizationId: payload.organizationId,
-      branchId: payload.branchId,
-      roleType: payload.roleType,
-      permissions: payload.permissions || [],
+      userId: decoded.userId,
+      email: decoded.email,
+      roleType: decoded.roleType,
+      organizationId:
+        decoded.organizationId,
+      branchId: decoded.branchId,
+      permissions:
+        decoded.permissions || [],
     };
   } catch (error) {
-    console.error('Error verifying token:', error);
+    console.log(
+      'JWT verify error',
+      error
+    );
     return null;
   }
 }
 
-/**
- * Check if user is super admin
- */
-export function isSuperAdmin(userContext: UserContext | null): boolean {
-  return userContext?.roleType === 'super_admin';
+
+
+export function unauthorizedResponse(
+  message = 'Unauthorized'
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: message,
+    },
+    { status: 401 }
+  );
 }
 
-/**
- * Check if user is clinic admin (can access their own clinic only)
- */
-export function isClinicAdmin(userContext: UserContext | null): boolean {
-  return userContext?.roleType === 'clinic_admin';
+export function forbiddenResponse(
+  message = 'Forbidden'
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: message,
+    },
+    { status: 403 }
+  );
 }
-
-/**
- * Check if user is branch admin (can access their own branch only)
- */
-export function isBranchAdmin(userContext: UserContext | null): boolean {
-  return userContext?.roleType === 'branch_admin';
-}
-
-/**
- * Build where clause for Supabase query based on user's role
- * Super admin: return empty object (no filter)
- * Others: filter by their organization (and branch if available)
- */
-export function getWhereClause(userContext: UserContext | null): any {
-  if (!userContext) {
-    return null;
-  }
-
-  if (isSuperAdmin(userContext)) {
-    return {}; // Super admin sees all
-  }
-
-  if (isBranchAdmin(userContext)) {
-    return {
-      organization_id: userContext.organizationId,
-      branch_id: userContext.branchId,
-    };
-  }
-
-  // For clinic admin and other roles
-  return {
-    organization_id: userContext.organizationId,
-  };
-}
-
-/**
- * Unauthorized response
- */
-export function unauthorizedResponse(message: string = 'Unauthorized') {
-  return NextResponse.json({ error: message }, { status: 401 });
-}
-
-/**
- * Forbidden response
- */
-export function forbiddenResponse(message: string = 'Access denied') {
-  return NextResponse.json({ error: message }, { status: 403 });
+export function isSuperAdmin(
+  user: UserContext
+) {
+  return (
+    user.roleType === 'super_admin'
+  );
 }

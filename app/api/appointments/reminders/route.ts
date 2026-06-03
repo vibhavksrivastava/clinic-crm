@@ -1,73 +1,104 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/db/client';
 import { getSessionFromRequest } from '@/lib/auth';
-import {
-  fetchDoctorDailyReminders,
-  fetchPatientPreHourReminders,
-} from '@/lib/appointmentReminders';
 
-export async function GET(request: NextRequest) {
-  const userContext = await getSessionFromRequest(request);
-  if (!userContext) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type');
-
-  if (!type) {
-    return NextResponse.json(
-      { error: 'Missing reminder type. Use ?type=doctor or ?type=patient' },
-      { status: 400 }
-    );
-  }
-
+export async function GET(req: NextRequest) {
   try {
-    if (type === 'doctor') {
-      const doctorId =
-        searchParams.get('user_id') ||
-        (userContext.roleType === 'doctor' ? userContext.userId : null);
+    const session = await getSessionFromRequest(req);
 
-      if (!doctorId) {
-        return NextResponse.json(
-          { error: 'Doctor user_id is required for doctor reminders' },
-          { status: 400 }
-        );
-      }
-
-      const reminders = await fetchDoctorDailyReminders(
-        doctorId,
-        userContext.organizationId,
-        userContext.branchId
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
-
-      return NextResponse.json({ reminders });
     }
 
-    if (type === 'patient') {
-      const patientId = searchParams.get('patient_id');
-      if (!patientId) {
-        return NextResponse.json(
-          { error: 'patient_id is required for patient reminders' },
-          { status: 400 }
-        );
-      }
+    const today = new Date();
+    const tomorrow = new Date();
 
-      const reminders = await fetchPatientPreHourReminders(
-        patientId,
-        userContext.organizationId,
-        userContext.branchId
+    tomorrow.setDate(today.getDate() + 1);
+
+    const start = today.toISOString();
+    const end = tomorrow.toISOString();
+
+    let query = supabase
+      .from('appointments')
+      .select(`
+        id,
+        appointment_date,
+        status,
+        appointment_type,
+        notes,
+        patient_id,
+        user_id,
+        organization_id,
+        branch_id,
+        patients (
+          id,
+          first_name,
+          last_name,
+          phone,
+          email
+        ),
+        users (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .gte('appointment_date', start)
+      .lte('appointment_date', end)
+      .in('status', ['scheduled', 'ongoing'])
+      .order('appointment_date', { ascending: true });
+
+    // Organization filter
+    if (session.organizationId) {
+      query = query.eq(
+        'organization_id',
+        session.organizationId
       );
-
-      return NextResponse.json({ reminders });
     }
+
+    // Branch filter
+    if (session.branchId) {
+      query = query.eq(
+        'branch_id',
+        session.branchId
+      );
+    }
+
+    // Doctor sees only own appointments
+    if (session.roleType === 'doctor') {
+      query = query.eq('user_id', session.userId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Reminder fetch error:', error);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      reminders: data || [],
+    });
+  } catch (error) {
+    console.error('Reminders API error:', error);
 
     return NextResponse.json(
-      { error: 'Unknown reminder type. Use ?type=doctor or ?type=patient' },
-      { status: 400 }
+      {
+        success: false,
+        error: 'Internal server error',
+      },
+      { status: 500 }
     );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error fetching appointment reminders:', message, error);
-    return NextResponse.json({ error: 'Failed to fetch reminders', details: message }, { status: 500 });
   }
 }

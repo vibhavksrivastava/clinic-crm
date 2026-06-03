@@ -1,48 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/client';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+
+export async function GET() {
   try {
-    const userContext = await getSessionFromRequest(request);
-
-    if (!userContext) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    let query = supabase
+    const { data, error } = await supabase
       .from('pharmacy_sales')
       .select(`
-        *,
-        pharmacy_customers(name, phone)
+        id,
+        invoice_number,
+        total_amount,
+        subtotal,
+        payment_method,
+        created_at,
+        payment_status,
+        pharmacy_sale_items (
+          id,
+          product_id,
+          quantity,
+          unit_price
+        )
       `)
       .order('created_at', { ascending: false });
 
-    if (userContext.organizationId) {
-      query = query.eq(
-        'organization_id',
-        userContext.organizationId
+    if (error) {
+      console.error('Sales fetch error:', error);
+
+      return NextResponse.json(
+        {
+          data: [],
+          error: error.message,
+        },
+        { status: 500 }
       );
     }
 
-    if (userContext.branchId) {
-      query = query.eq('branch_id', userContext.branchId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return NextResponse.json(data || []);
-  } catch (error: any) {
-    console.error(error);
-
+    return NextResponse.json({
+      data: Array.isArray(data) ? data : [],
+      error: null,
+    });
+  } catch (err: any) {
     return NextResponse.json(
       {
-        error: error.message,
+        data: [],
+        error: err.message || 'Unexpected server error',
       },
       { status: 500 }
     );

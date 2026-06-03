@@ -1,11 +1,12 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, usePathname  } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Header from '@/components/Header';
+import { Activity, GitGraphIcon, StepBackIcon } from 'lucide-react';
 
 export default function PatientDetailPage() {
   const params = useParams();
+  const pathname = usePathname();
   const patientId = params.id as string;
 
   const [data, setData] = useState<any>(null);
@@ -20,7 +21,6 @@ export default function PatientDetailPage() {
   if (!data) {
     return (
       <div>
-        <Header />
         <div className="p-10">Loading...</div>
       </div>
     );
@@ -35,15 +35,49 @@ export default function PatientDetailPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Header />
-
+    <div className="min-h-screen bg-slate-50">
+      
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
-          <h1 className="text-4xl font-bold text-gray-900">
-            {data.patient.first_name} {data.patient.last_name}
-          </h1>
 
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl mb-8">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <Activity size={16} />
+              MediQuick Rx
+            </div>
+
+            <p className="mt-3 text-blue-100 max-w-2xl">
+              Patient Dashboard: Manage appointments, prescriptions, and history in one place.
+            </p>
+          </div>
+
+                          
+            <button
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+              <StepBackIcon size={18} />
+                👨‍⚕️ Back to Patients
+            </button>
+        </div>
+      </div>
+
+        <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-20 mt-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {data.patient.first_name} {data.patient.last_name}
+            </h1>
+            <button
+              onClick={() => window.open(`/patients/${patientId}/history`, '_blank')}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md mb-4">
+                <GitGraphIcon size={18} />
+                  History
+              </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="p-4 rounded-2xl bg-blue-50">
               📞 {data.patient.phone}

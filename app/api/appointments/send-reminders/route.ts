@@ -1,89 +1,149 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/client';
-import { fetchDoctorDailyReminders } from '@/lib/appointmentReminders';
-import { sendWhatsAppMessage } from '@/lib/messaging';
+import { getSessionFromRequest } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // Security check for cron requests
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+    const session = await getSessionFromRequest(req);
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    // Get all doctors with phone numbers
-    const { data: doctors, error } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, phone, roles!inner(role_type)')
-      .eq('roles.role_type', 'doctor')
-      .not('phone', 'is', null);
+    // Only receptionist/admin allowed
+    const roleType = typeof session.roleType === 'string' ? session.roleType : '';
+
+    if (!['receptionist', 'clinic_admin', 'branch_admin'].includes(roleType)) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
+    const now = new Date();
+    const tomorrow = new Date();
+
+    tomorrow.setDate(now.getDate() + 1);
+
+    // Start/end of tomorrow
+    const startDate = new Date(
+      tomorrow.getFullYear(),
+      tomorrow.getMonth(),
+      tomorrow.getDate(),
+      0,
+      0,
+      0
+    );
+
+    const endDate = new Date(
+      tomorrow.getFullYear(),
+      tomorrow.getMonth(),
+      tomorrow.getDate(),
+      23,
+      59,
+      59
+    );
+
+    let query = supabase
+      .from('appointments')
+      .select(`
+        *,
+        patients (
+          id,
+          first_name,
+          last_name,
+          phone
+        ),
+        users (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('status', 'scheduled')
+      .gte('appointment_date', startDate.toISOString())
+      .lte('appointment_date', endDate.toISOString());
+
+    // Org filter
+    if (session.organizationId) {
+      query = query.eq(
+        'organization_id',
+        session.organizationId
+      );
+    }
+
+    // Branch filter
+    if (session.branchId) {
+      query = query.eq(
+        'branch_id',
+        session.branchId
+      );
+    }
+
+    const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching doctors:', error);
-      return NextResponse.json({ error: 'Failed to fetch doctors' }, { status: 500 });
+      console.error(
+        'Reminder fetch error:',
+        error
+      );
+
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
     }
 
-    if (!doctors || doctors.length === 0) {
-      return NextResponse.json({ message: 'No doctors with phone numbers found' });
-    }
+    interface ReminderAppointment {
+  id: string;
+  appointment_date: string;
+  patients?: {
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+  } | null;
+}
 
-    const results = [];
+const reminders =
+  (data as ReminderAppointment[] | null)?.map(
+    (appointment: ReminderAppointment) => ({
+      appointment_id: appointment.id,
+      patient_name: `${appointment.patients?.first_name || ''} ${
+        appointment.patients?.last_name || ''
+      }`.trim(),
+      phone: appointment.patients?.phone || '',
+      appointment_date: appointment.appointment_date,
+      reminder_type: 'appointment_reminder',
+      message: `Reminder: Appointment scheduled on ${new Date(
+        appointment.appointment_date
+      ).toLocaleString()}`,
+    })
+  ) || [];
 
-    for (const doctor of doctors) {
-      try {
-        // Fetch today's reminders for this doctor
-        const reminders = await fetchDoctorDailyReminders(doctor.id);
-
-        if (reminders && reminders.length > 0 && reminders[0].message !== 'You have no scheduled appointments for today.') {
-          // Format the message
-          const messageBody = `Good morning Dr. ${doctor.first_name} ${doctor.last_name}!\n\n${reminders[0].message}`;
-
-          // Send WhatsApp message
-          let phoneNumber = doctor.phone;
-          
-          if (!phoneNumber.startsWith('+')) {
-            // Assume Indian numbers - add +91 prefix for 10-digit numbers
-            if (phoneNumber.length === 10 && /^\d{10}$/.test(phoneNumber)) {
-              phoneNumber = '+91' + phoneNumber;
-            } else {
-              phoneNumber = '+' + phoneNumber;
-            }
-          }
-          
-          const messageSid = await sendWhatsAppMessage(phoneNumber, messageBody);
-
-          results.push({
-            doctor: `${doctor.first_name} ${doctor.last_name}`,
-            phone: doctor.phone,
-            appointments: reminders.length > 0 ? reminders[0].message.split('\n').length - 2 : 0, // rough count
-            messageSid
-          });
-        } else {
-          results.push({
-            doctor: `${doctor.first_name} ${doctor.last_name}`,
-            phone: doctor.phone,
-            appointments: 0,
-            message: 'No appointments today'
-          });
-        }
-      } catch (err) {
-        console.error(`Error sending to ${doctor.first_name}:`, err);
-        results.push({
-          doctor: `${doctor.first_name} ${doctor.last_name}`,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        });
-      }
-    }
+    // Future:
+    // WhatsApp / SMS API integration here
 
     return NextResponse.json({
-      message: 'Reminders sent',
-      results
+      success: true,
+      total: reminders.length,
+      reminders,
     });
-
   } catch (error) {
-    console.error('Error in send-reminders:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error(
+      'Send reminders error:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }

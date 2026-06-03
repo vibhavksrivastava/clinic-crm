@@ -7,6 +7,7 @@ import {
 } from 'next/navigation';
 
 import Header from '@/components/Header';
+import { Link, PackageCheck, ShoppingCart } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -352,32 +353,53 @@ export default function PurchaseOrderContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F1F5FA]">
-      <Header />
+    <div className="min-h-screen bg-slate-50">
 
-      <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-sm text-slate-500">
-              Pharmacy / Purchase Orders
-            </p>
+      <div className="max-w-7xl mx-auto px-4 py-8">
 
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Create Purchase Order
-            </h1>
-          </div>
+        {/* HERO */}
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_25%)]" />
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3">
+          <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur-md">
+                <ShoppingCart size={16} />
+                Pharmacy Procurement
+              </div>
+
+              <h1 className="text-4xl font-bold tracking-tight">
+                Create Purchase Order
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-base text-blue-100">
+              Order supplier purchase with batch, expiry and GST details
+              </p>
+            </div>
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
               Total Items
             </p>
-
             <p className="text-2xl font-bold text-blue-700">
               {items.length}
             </p>
           </div>
+          </div>
         </div>
       </div>
+
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/pharmacy"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Back
+            </Link>
+          </div>
+          </div>
+
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 xl:grid-cols-[1fr_360px]">
         {/* LEFT */}

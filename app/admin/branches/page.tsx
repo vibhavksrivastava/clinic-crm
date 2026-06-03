@@ -140,8 +140,7 @@ export default function BranchesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-
+    {/* Header */}
       <main className="max-w-6xl mx-auto py-8 px-4">
         <div className="flex justify-between items-center mb-8">
           <div>
