@@ -49,7 +49,7 @@ interface Appointment {
     | 'completed'
     | 'cancelled';
   appointment_type: string;
-  fee_amount?: number | null;
+  amount?: number | null;
   notes?: string;
 
   patients?: Patient;
@@ -139,7 +139,7 @@ export default function AppointmentsPage() {
 
   const [completionData, setCompletionData] =
     useState({
-      fee_amount: '',
+      amount: '',
       notes_from_doctor: '',
     });
 
@@ -316,32 +316,21 @@ export default function AppointmentsPage() {
 
     const [search, setSearch] = useState('');
 
-  const fetchInvoiceForAppointment =
-    async (appointmentId: string) => {
-      try {
-        const res = await fetch(
-          `/api/invoices?appointment_id=${appointmentId}`
-        );
 
-        if (!res.ok) return 0;
+    const fetchInvoiceForAppointment =
+  async (
+    appointmentId: string
+  ) => {
+    const res = await fetch(
+      `/api/invoices?appointment_id=${appointmentId}`
+    );
 
-        const data = await res.json();
+    if (!res.ok) {
+      return null;
+    }
 
-        if (
-          Array.isArray(data) &&
-          data.length
-        ) {
-          return Number(
-            data[0]?.total_amount || 0
-          );
-        }
-
-        return 0;
-      } catch {
-        return 0;
-      }
-    };
-
+    return await res.json();
+  };
   // --------------------------------
   // APPOINTMENT CREATE / UPDATE
   // --------------------------------
@@ -485,7 +474,7 @@ export default function AppointmentsPage() {
       );
 
       setCompletionData({
-        fee_amount: '',
+        amount: '',
         notes_from_doctor: '',
       });
 
@@ -517,7 +506,7 @@ export default function AppointmentsPage() {
                 status: 'completed',
                 fee_amount:
                   Number(
-                    completionData.fee_amount
+                    completionData.amount
                   ) || 0,
                 notes_from_doctor:
                   completionData.notes_from_doctor,
@@ -552,6 +541,7 @@ export default function AppointmentsPage() {
   // --------------------------------
   // PAYMENT
   // --------------------------------
+      
   const handleOpenPayment =
     async (
       appointmentId: string,
@@ -560,17 +550,27 @@ export default function AppointmentsPage() {
       setPaymentAppointmentId(
         appointmentId
       );
-
-      const invoiceAmount =
+      const invoice =
         await fetchInvoiceForAppointment(
           appointmentId
         );
 
-      const pending =
-        invoiceAmount ||
-        feeAmount ||
-        0;
+const invoiceValue =
+  Number(invoice?.amount ?? 0);
 
+const feeValue =
+  Number(feeAmount ?? 0);
+
+const pending =
+  invoiceValue > 0
+    ? invoiceValue
+    : feeValue;
+
+setPendingAmount(
+  Number.isFinite(pending)
+    ? pending
+    : 0
+);
       setPendingAmount(
         Number(pending)
       );
@@ -1524,242 +1524,255 @@ export default function AppointmentsPage() {
         {/* TABLE BODY */}
         <tbody className="divide-y divide-gray-100">
 
-          {filteredAppointments.map((apt) => (
+{filteredAppointments.map((apt) => {
+  const totalDue = Number(apt.amount || 0);
 
-            <tr
-              key={apt.id}
-              className="hover:bg-blue-50/40 transition"
-            >
+  const totalPaid =
+    apt.appointment_payments?.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount_paid || 0),
+      0
+    ) || 0;
 
-              {/* PATIENT */}
-              <td className="px-6 py-5">
+  const paymentStatus =
+    totalPaid <= 0
+      ? 'pending'
+      : totalPaid >= totalDue
+      ? 'paid'
+      : 'partial';
 
+  return (
+    <tr
+      key={apt.id}
+      className="hover:bg-blue-50/40 transition"
+    >
+      {/* PATIENT */}
+      <td className="px-6 py-5">
+        <button
+          onClick={() => {
+            setSelectedPatient(apt);
+            setShowPatientDetails(true);
+          }}
+          className="text-left group"
+        >
+          <div className="font-semibold text-blue-700 group-hover:text-blue-900 group-hover:underline transition">
+            {apt.patients?.first_name}{' '}
+            {apt.patients?.last_name}
+          </div>
+
+          <div className="text-xs text-gray-500 mt-1">
+            Click to view details
+          </div>
+        </button>
+      </td>
+
+      {/* DOCTOR */}
+      <td className="px-6 py-5">
+        <div className="font-medium text-gray-800">
+          Dr. {apt.users?.first_name}{' '}
+          {apt.users?.last_name}
+        </div>
+      </td>
+
+      {/* DATE */}
+      <td className="px-6 py-5">
+        <div className="font-medium text-gray-800">
+          {new Date(
+            apt.appointment_date
+          ).toLocaleDateString()}
+        </div>
+
+        <div className="text-sm text-gray-500">
+          {new Date(
+            apt.appointment_date
+          ).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </div>
+      </td>
+
+      {/* TYPE */}
+      <td className="px-6 py-5">
+        <span className="inline-flex px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold capitalize">
+          {apt.appointment_type}
+        </span>
+      </td>
+
+      {/* STATUS */}
+      <td className="px-6 py-5">
+        <span
+          className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize
+          ${
+            apt.status === 'completed'
+              ? 'bg-green-100 text-green-700'
+              : apt.status === 'ongoing'
+              ? 'bg-yellow-100 text-yellow-700'
+              : apt.status === 'cancelled'
+              ? 'bg-red-100 text-red-700'
+              : 'bg-blue-100 text-blue-700'
+          }`}
+        >
+          {apt.status}
+        </span>
+      </td>
+
+      {/* PAYMENT */}
+      <td className="px-6 py-5">
+        <div className="flex flex-col gap-1">
+          <span
+            className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize w-fit
+            ${
+              paymentStatus === 'paid'
+                ? 'bg-green-100 text-green-700'
+                : paymentStatus === 'partial'
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {paymentStatus}
+          </span>
+
+          {totalDue > 0 && (
+            <span className="text-xs text-gray-500">
+              ₹{totalPaid.toFixed(2)} / ₹
+              {totalDue.toFixed(2)}
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* ACTIONS */}
+      <td className="px-6 py-5">
+        <div className="flex flex-wrap gap-2">
+
+          {/* DOCTOR ACTIONS */}
+          {userContext?.roleType ===
+            'doctor' && (
+            <>
+              {apt.status ===
+                'scheduled' && (
                 <button
-                  onClick={() => {
-                    setSelectedPatient(apt);
-                    setShowPatientDetails(true);
-                  }}
-                  className="text-left group"
+                  onClick={() =>
+                    handleMarkOngoing(
+                      apt.id
+                    )
+                  }
+                  className="px-3 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-semibold transition"
                 >
-                  <div className="font-semibold text-blue-700 group-hover:text-blue-900 group-hover:underline transition">
-                    {apt.patients?.first_name}{' '}
-                    {apt.patients?.last_name}
-                  </div>
-
-                  <div className="text-xs text-gray-500 mt-1">
-                    Click to view details
-                  </div>
+                  Ongoing
                 </button>
+              )}
 
-              </td>
+              {(apt.status ===
+                'scheduled' ||
+                apt.status ===
+                  'ongoing') && (
+                <>
+                  <button
+                    onClick={() =>
+                      handleWriteRx(
+                        apt.id
+                      )
+                    }
+                    className="px-3 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-semibold transition"
+                  >
+                    Rx
+                  </button>
 
-              {/* DOCTOR */}
-              <td className="px-6 py-5">
-                <div className="font-medium text-gray-800">
-                  Dr. {apt.users?.first_name}{' '}
-                  {apt.users?.last_name}
-                </div>
-              </td>
+                  <button
+                    onClick={() =>
+                      handleViewRx(
+                        apt.id
+                      )
+                    }
+                    className="px-3 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-semibold transition"
+                  >
+                    Prescriptions
+                  </button>
 
-              {/* DATE */}
-              <td className="px-6 py-5">
-                <div className="font-medium text-gray-800">
-                  {new Date(
-                    apt.appointment_date
-                  ).toLocaleDateString()}
-                </div>
+                  <button
+                    onClick={() => {
+                      setVitalsAppointmentId(
+                        apt.id
+                      );
+                      setShowVitalsForm(
+                        true
+                      );
+                    }}
+                    className="px-3 py-2 rounded-xl bg-sky-100 text-sky-700 hover:bg-sky-200 text-xs font-semibold transition"
+                  >
+                    Vitals
+                  </button>
 
-                <div className="text-sm text-gray-500">
-                  {new Date(
-                    apt.appointment_date
-                  ).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </div>
-              </td>
+                  <button
+                    onClick={() =>
+                      handleCompleteAppointment(
+                        apt.id
+                      )
+                    }
+                    className="px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 text-xs font-semibold transition"
+                  >
+                    Complete
+                  </button>
+                </>
+              )}
+            </>
+          )}
 
-              {/* TYPE */}
-              <td className="px-6 py-5">
-                <span className="inline-flex px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold capitalize">
-                  {apt.appointment_type}
-                </span>
-              </td>
+          {/* CANCEL */}
+          {[
+            'receptionist',
+            'clinic_admin',
+            'branch_admin',
+          ].includes(
+            userContext?.roleType || ''
+          ) &&
+            (apt.status ===
+              'scheduled' ||
+              apt.status ===
+                'ongoing') && (
+              <button
+                onClick={() =>
+                  handleCancelAppointment(
+                    apt.id
+                  )
+                }
+                className="px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 text-xs font-semibold transition"
+              >
+                Cancel
+              </button>
+            )}
 
-              {/* STATUS */}
-              <td className="px-6 py-5">
+          {/* PAYMENT */}
+          {[
+            'receptionist',
+            'clinic_admin',
+            'branch_admin',
+          ].includes(
+            userContext?.roleType || ''
+          ) &&
+            apt.status ===
+              'completed' &&
+            paymentStatus !== 'paid' && (
+              <button
+                onClick={() =>
+                  handleOpenPayment(
+                    apt.id,
+                    apt.amount
+                  )
+                }
+                className="px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-semibold transition"
+              >
+                Payment
+              </button>
+            )}
+        </div>
+      </td>
+    </tr>
+  );
+})}
 
-                <span
-                  className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize
-                  ${
-                    apt.status === 'completed'
-                      ? 'bg-green-100 text-green-700'
-                      : apt.status === 'ongoing'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : apt.status === 'cancelled'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}
-                >
-                  {apt.status}
-                </span>
-
-              </td>
-
-              {/* PAYMENT */}
-              <td className="px-6 py-5">
-
-                <span
-                  className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize
-                  ${
-                    apt
-                      .appointment_payments?.[0]
-                      ?.payment_status === 'paid'
-                      ? 'bg-green-100 text-green-700'
-                      : apt
-                          .appointment_payments?.[0]
-                          ?.payment_status ===
-                        'partial'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {apt.appointment_payments?.[0]
-                    ?.payment_status || 'Pending'}
-                </span>
-
-              </td>
-
-              {/* ACTIONS */}
-              <td className="px-6 py-5">
-
-                <div className="flex flex-wrap gap-2">
-
-                  {/* DOCTOR ACTIONS */}
-                  {userContext?.roleType ===
-                    'doctor' && (
-                    <>
-                      {apt.status ===
-                        'scheduled' && (
-                        <button
-                          onClick={() =>
-                            handleMarkOngoing(
-                              apt.id
-                            )
-                          }
-                          className="px-3 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-semibold transition"
-                        >
-                          Ongoing
-                        </button>
-                      )}
-
-                      {(apt.status ===
-                        'scheduled' ||
-                        apt.status ===
-                          'ongoing') && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleWriteRx(
-                                apt.id
-                              )
-                            }
-                            className="px-3 py-2 rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-semibold transition"
-                          >
-                            Rx
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleViewRx(
-                                apt.id
-                              )
-                            }
-                            className="px-3 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-semibold transition"
-                          >
-                            Prescriptions
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setVitalsAppointmentId(
-                                apt.id
-                              );
-                              setShowVitalsForm(
-                                true
-                              );
-                            }}
-                            className="px-3 py-2 rounded-xl bg-sky-100 text-sky-700 hover:bg-sky-200 text-xs font-semibold transition"
-                          >
-                            Vitals
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleCompleteAppointment(
-                                apt.id
-                              )
-                            }
-                            className="px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 text-xs font-semibold transition"
-                          >
-                            Complete
-                          </button>
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* RECEPTION / ADMIN CANCEL */}
-                  {[
-                    'receptionist',
-                    'clinic_admin',
-                    'branch_admin',
-                  ].includes(
-                    userContext?.roleType || ''
-                  ) &&
-                    (apt.status ===
-                      'scheduled' ||
-                      apt.status ===
-                        'ongoing') && (
-                      <button
-                        onClick={() =>
-                          handleCancelAppointment(
-                            apt.id
-                          )
-                        }
-                        className="px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 text-xs font-semibold transition"
-                      >
-                        Cancel
-                      </button>
-                    )}
-
-                  {/* PAYMENT */}
-                  {[
-                    'receptionist',
-                    'clinic_admin',
-                    'branch_admin',
-                  ].includes(
-                    userContext?.roleType || ''
-                  ) &&
-                    apt.status ===
-                      'completed' && (
-                      <button
-                        onClick={() =>
-                          handleOpenPayment(
-                            apt.id,
-                            apt.fee_amount
-                          )
-                        }
-                        className="px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-semibold transition"
-                      >
-                        Payment
-                      </button>
-                    )}
-                </div>
-
-              </td>
-            </tr>
-          ))}
         </tbody>
       </table>
     </div>
@@ -2064,11 +2077,11 @@ export default function AppointmentsPage() {
               type="number"
               step="0.01"
               required
-              value={completionData.fee_amount}
+              value={completionData.amount}
               onChange={(e) =>
                 setCompletionData({
                   ...completionData,
-                  fee_amount: e.target.value,
+                  amount: e.target.value,
                 })
               }
               placeholder="Enter consultation fee"

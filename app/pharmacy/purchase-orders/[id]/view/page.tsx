@@ -84,23 +84,18 @@ const [updatingInventory, setUpdatingInventory] = useState(false);
   };
 
   const fetchSupplier = async (
-  supplierId: string
+  supplier_id: string
 ) => {
   try {
     const res = await fetch(
-      '/api/pharmacy/suppliers',
+      `/api/pharmacy/suppliers?id=${supplier_id}`,
       {
         headers: getAuthHeaders(),
       }
     );
-
     const data = await res.json();
 
-    const found = data.find(
-      (s: any) => s.id === supplierId
-    );
-
-    setSupplier(found || null);
+    setSupplier(data || null);
   } catch (error) {
     console.error(error);
   }
@@ -146,8 +141,6 @@ const [updatingInventory, setUpdatingInventory] = useState(false);
 };
 return (
   <div className="min-h-screen bg-slate-50">
-    <Header />
-
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
 
       {/* PRINT HEADER */}
@@ -183,7 +176,7 @@ return (
           <div className="flex flex-col sm:flex-row gap-3 print:hidden">
 
             <button
-              onClick={() => window.print()}
+              onClick={() => window.open(`/api/print/purchase-order/${params.id}`, '_blank')}
               className="w-full sm:w-auto px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition"
             >
               Print / PDF
@@ -569,25 +562,6 @@ return (
         </div>
       </div>
     </div>
-
-    {/* FLOATING INVENTORY BUTTON */}
-
-    {purchaseOrder?.status !==
-      'Received' && (
-      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 print:hidden">
-
-        <button
-          type="button"
-          onClick={handleUpdateInventory}
-          disabled={updatingInventory}
-          className="w-full sm:w-auto px-6 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-lg font-semibold transition disabled:opacity-50"
-        >
-          {updatingInventory
-            ? 'Updating Inventory...'
-            : 'Update Inventory'}
-        </button>
-      </div>
-    )}
 
     {/* PRINT STYLES */}
 

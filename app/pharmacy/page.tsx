@@ -145,6 +145,14 @@ const quickActions: QuickAction[] = [
       'from-teal-500 to-emerald-500',
     link: '/pharmacy/inventory',
   },
+    {
+    title: 'GST Reports',
+    description: 'GST filing reports',
+    icon: BarChart3,
+    gradient:
+      'from-teal-500 to-emerald-500',
+    link: '/pharmacy/reports/gst',
+  },
 ];
 
 /* --------------------------------

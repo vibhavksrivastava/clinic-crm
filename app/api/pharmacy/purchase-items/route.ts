@@ -94,10 +94,8 @@ export async function POST(req: NextRequest) {
       product_name,
       quantity,
       purchase_price,
-      mrp,
-      batch_number,
-      expiry_date,
       gst_percent,
+      selling_price,
       total_amount,
     } = body;
 
@@ -127,12 +125,9 @@ export async function POST(req: NextRequest) {
       product_name,
       quantity,
       purchase_price,
-      mrp,
-      batch_number,
-      expiry_date,
       gst_percent,
       total_amount,
-      selling_price: mrp,
+      selling_price,
     };
 
     console.log(

@@ -665,7 +665,6 @@ export default function PurchaseOrdersPage() {
                                 </Link>
                               </>
                             )}
-
                             {order.status?.toLowerCase() ===
                               'received' &&
                               !order.inventory_updated && (

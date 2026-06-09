@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { formatDate } from '@/lib/utils/date';
 
 interface Invoice {
   id: string;
@@ -13,7 +15,8 @@ interface Invoice {
   paid_date?: string;
   created_at: string;
   notes?: string;
-  patients?: { first_name: string; last_name: string; phone?: string; email?: string; date_of_birth?: string };
+  appointment?: { user: { first_name: string; last_name: string } };
+  patient?: { first_name: string; last_name: string; phone?: string; email?: string; date_of_birth?: string };
 }
 
 interface Patient {
@@ -22,6 +25,20 @@ interface Patient {
   last_name: string;
 }
 
+interface ClinicInfo {
+  organization_name: string;
+  branch_name?: string;
+  logo_url?: string;
+
+  address?: string;
+  city?: string;
+  country?: string;
+  postal_code?: string;
+
+  phone?: string;
+  email?: string;
+  website?: string;
+}
 export default function InvoicingPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -29,6 +46,8 @@ export default function InvoicingPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null);
+ 
   const [formData, setFormData] = useState({
     patient_id: '',
     appointment_id: '',
@@ -46,16 +65,23 @@ export default function InvoicingPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [invoicesRes, patientsRes] = await Promise.all([
+      
+      const [invoicesRes, patientsRes, clinicRes] = await Promise.all([
         fetch('/api/invoices'),
         fetch('/api/patients'),
+        fetch('/api/settings/clinic')
       ]);
-
       const invoicesData = await invoicesRes.json();
       const patientsData = await patientsRes.json();
+      const clinicData = await clinicRes.json();
+      
+      console.log('INVOICES API:', invoicesData);
+      console.log('PATIENTS API:', patientsData);
+      console.log('CLINIC API:', clinicData);
 
       setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
+      setClinicInfo(clinicData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -74,6 +100,13 @@ export default function InvoicingPage() {
       return [];
     }
   };
+
+  const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
 
   const handlePatientChange = async (patientId: string) => {
     setFormData({ ...formData, patient_id: patientId, appointment_id: '' });
@@ -208,26 +241,17 @@ export default function InvoicingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
             <p className="text-gray-600 text-sm font-medium">Total Billed</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">${totalAmount.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{formatCurrency(totalAmount)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
             <p className="text-gray-600 text-sm font-medium">Paid</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">${paidAmount.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600 mt-2">{formatCurrency(paidAmount)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
             <p className="text-gray-600 text-sm font-medium">Outstanding</p>
-            <p className="text-3xl font-bold text-red-600 mt-2">${pendingAmount.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-red-600 mt-2">{formatCurrency(pendingAmount)}</p>
           </div>
         </div>
-
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="mb-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
-          >
-            + Create Invoice
-          </button>
-        )}
 
         {showForm && (
           <div className="mb-8 bg-white rounded-lg shadow p-6">
@@ -335,6 +359,7 @@ export default function InvoicingPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-100">
                 <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold">Doctor</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Patient</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Amount</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold">Due Date</th>
@@ -347,9 +372,12 @@ export default function InvoicingPage() {
                 {invoices.map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm">
-                      {invoice.patients?.first_name} {invoice.patients?.last_name}
+                      {invoice.appointment?.user.first_name} {invoice.appointment?.user.last_name}
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold">${invoice.amount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {invoice.patient?.first_name} {invoice.patient?.last_name}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold">{formatCurrency(invoice.amount)}</td>
                     <td className="px-6 py-4 text-sm">
                       {new Date(invoice.due_date).toLocaleDateString()}
                     </td>
@@ -377,18 +405,6 @@ export default function InvoicingPage() {
                         className="text-blue-600 hover:text-blue-900 mr-4"
                       >
                         View
-                      </button>
-                      <button
-                        onClick={() => handleEdit(invoice)}
-                        className="text-green-600 hover:text-green-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(invoice.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
                       </button>
                     </td>
                   </tr>
@@ -420,12 +436,77 @@ export default function InvoicingPage() {
               {/* Invoice Content */}
               <div id={`invoice-${selectedInvoice.id}`} className="p-8">
                 {/* Clinic Header */}
-                <div className="text-center border-b-2 border-gray-300 pb-4 mb-6">
-                  <h1 className="text-3xl font-bold text-gray-900">Clinic Management System</h1>
-                  <p className="text-gray-600 mt-1">123 Medical Center, Healthcare City</p>
-                  <p className="text-gray-600">Phone: +91 1234567890 | Email: clinic@clinic.com</p>
-                </div>
+                <div className="text-center border-b-2 border-gray-300 pb-6 mb-6">
 
+  {clinicInfo?.logo_url && (
+    <img
+  src={clinicInfo?.logo_url || '/logo.png'}
+  alt="Clinic Logo"
+  width={250}
+  height={80}
+  className="mx-auto object-contain"
+/>
+  )}
+
+  <h1 className="text-3xl font-bold text-gray-900">
+    {clinicInfo?.organization_name}
+      {clinicInfo?.branch_name && (
+    <div className="text-lg font-medium text-gray-700">
+      {clinicInfo.branch_name}
+    </div>
+  )}
+  </h1>
+
+  <div className="text-sm text-gray-600 mt-2">
+    Address: {clinicInfo?.address},
+    {clinicInfo?.city},
+    Postal Code: {clinicInfo?.postal_code &&
+      ` - ${clinicInfo.postal_code}`},
+  </div>
+
+  <div className="text-sm text-gray-600">
+    Phone: {clinicInfo?.phone}
+  </div>
+
+  <div className="text-sm text-gray-600">
+   Email: {clinicInfo?.email}
+  </div>
+  {clinicInfo?.website && (
+    <div className="text-sm text-gray-600">
+      {clinicInfo.website}
+    </div>
+  )}
+</div>
+
+<div className="flex justify-between mb-6">
+
+  <div>
+    <div className="font-semibold">
+      Doctor
+    </div>
+
+    <div>
+      Dr.
+      {' '}
+      {selectedInvoice.appointment?.user?.first_name}
+      {' '}
+      {selectedInvoice.appointment?.user?.last_name}
+    </div>
+  </div>
+
+  <div className="text-right">
+    <div className="font-semibold">
+      Invoice No
+    </div>
+
+    <div>
+      {selectedInvoice.id
+        .slice(0, 8)
+        .toUpperCase()}
+    </div>
+  </div>
+
+</div>
                 {/* Invoice Details */}
                 <div className="mb-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -434,16 +515,16 @@ export default function InvoicingPage() {
                       <table className="w-full text-sm">
                         <tbody>
                           <tr>
-                            <td className="py-1 text-gray-600">Invoice No:</td>
-                            <td className="py-1 font-semibold">{selectedInvoice.id.slice(0, 8).toUpperCase()}</td>
-                          </tr>
-                          <tr>
                             <td className="py-1 text-gray-600">Date:</td>
-                            <td className="py-1">{new Date(selectedInvoice.created_at).toLocaleDateString()}</td>
+                            <td className="py-1">{formatDate(selectedInvoice.created_at)}</td>
                           </tr>
                           <tr>
                             <td className="py-1 text-gray-600">Due Date:</td>
-                            <td className="py-1">{new Date(selectedInvoice.due_date).toLocaleDateString()}</td>
+                            <td className="py-1">{
+                                selectedInvoice.due_date
+                                  ? new Date(selectedInvoice.due_date).toLocaleDateString('en-IN')
+                                  : '-'
+                              }</td>
                           </tr>
                           <tr>
                             <td className="py-1 text-gray-600">Status:</td>
@@ -466,15 +547,15 @@ export default function InvoicingPage() {
                         <tbody>
                           <tr>
                             <td className="py-1 text-gray-600">Name:</td>
-                            <td className="py-1 font-semibold">{selectedInvoice.patients?.first_name} {selectedInvoice.patients?.last_name}</td>
+                            <td className="py-1 font-semibold">{selectedInvoice.patient?.first_name} {selectedInvoice.patient?.last_name}</td>
                           </tr>
                           <tr>
                             <td className="py-1 text-gray-600">Phone:</td>
-                            <td className="py-1">{selectedInvoice.patients?.phone || 'N/A'}</td>
+                            <td className="py-1">{selectedInvoice.patient?.phone || 'N/A'}</td>
                           </tr>
                           <tr>
                             <td className="py-1 text-gray-600">Email:</td>
-                            <td className="py-1">{selectedInvoice.patients?.email || 'N/A'}</td>
+                            <td className="py-1">{selectedInvoice.patient?.email || 'N/A'}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -486,7 +567,7 @@ export default function InvoicingPage() {
                 <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-lg text-gray-700">Total Amount:</span>
-                    <span className="text-3xl font-bold text-blue-600">${selectedInvoice.amount.toFixed(2)}</span>
+                    <span className="text-3xl font-bold text-blue-600">{formatCurrency(selectedInvoice.amount)}</span>
                   </div>
                 </div>
 
@@ -501,7 +582,7 @@ export default function InvoicingPage() {
                 {/* Payment Info */}
                 {selectedInvoice.status === 'paid' && selectedInvoice.paid_date && (
                   <div className="mb-6 bg-green-50 p-4 rounded-lg border border-green-200">
-                    <div className="text-sm font-semibold text-green-900">✓ Payment Received on {new Date(selectedInvoice.paid_date).toLocaleDateString()}</div>
+                    <div className="text-sm font-semibold text-green-900">✓ Payment Received on {formatDate(selectedInvoice.paid_date)}</div>
                   </div>
                 )}
 
@@ -517,30 +598,13 @@ export default function InvoicingPage() {
                 <div className="flex gap-3 pt-6 no-print">
                   <button
                     onClick={() => {
-                      window.print();
+                      window.open(`/api/print/invoice/${selectedInvoice.id}`,"_blank");
                     }}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition text-sm"
                   >
                     🖨️ Print
                   </button>
-                  <button
-                    onClick={() => {
-                      handleEdit(selectedInvoice);
-                      setSelectedInvoice(null);
-                    }}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition text-sm"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleDelete(selectedInvoice.id);
-                      setSelectedInvoice(null);
-                    }}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition text-sm"
-                  >
-                    🗑️ Delete
-                  </button>
+                  
                 </div>
               </div>
             </div>

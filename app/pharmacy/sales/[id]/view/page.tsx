@@ -103,10 +103,13 @@ export default function InvoiceViewPage() {
     return `₹${Number(amount || 0).toFixed(2)}`;
   };
 
-  const handlePrint = () => {
-    window.print();
+ const handlePrint = () => {
+  if(!sale) return;
+  window.open(
+    `/api/print/sales/${sale.id}`,
+    '_blank'
+  );
 };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-100">
