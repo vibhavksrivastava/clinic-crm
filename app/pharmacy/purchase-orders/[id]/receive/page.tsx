@@ -27,7 +27,8 @@ interface POItem {
   id: string;
   product_id: string;
   product_name: string;
-
+  supplier_id: string;
+  supplier_name: string;
   quantity: number;
   received_quantity: number;
   pending_quantity: number;
@@ -90,6 +91,10 @@ export default function ReceivePOPage() {
 
           product_name:
             item.product?.name || '',
+
+          supplier_id: item.supplier_id,
+
+          supplier_name: item.supplier?.supplier_name || '',
 
           quantity: Number(
             item.quantity || 0
@@ -226,8 +231,29 @@ export default function ReceivePOPage() {
       setLoading(true);
 
       const payload = {
-        items,
-      };
+  items: items
+    .map(item => ({
+      id: item.id,
+      product_id: item.product_id,
+
+      quantity: item.quantity,
+
+      received_quantity:
+        item.received_quantity,
+
+      batches:
+        item.batches.filter(
+          b =>
+            Number(
+              b.received_quantity
+            ) > 0
+        ),
+    }))
+    .filter(
+      item =>
+        item.batches.length > 0
+    ),
+};
 
       const res = await fetch(
         `/api/pharmacy/purchase-orders/${id}/receive`,

@@ -32,6 +32,7 @@ import {
   RefreshCcw,
   Link,
   PackageCheck,
+  Shield,
 } from 'lucide-react';
 
 type Product = {
@@ -64,14 +65,36 @@ type CartItem = {
 type PaymentMethod =
   | 'cash'
   | 'upi'
-  | 'card';
+  | 'card'
+  | 'credit';
 
 export default function CreateSalePage() {
   const router = useRouter();
 
+  const [showAvailableOnly, setShowAvailableOnly] =
+  useState(true);
+
   const [products, setProducts] =
     useState<Product[]>([]);
 
+  const [saleType, setSaleType] = useState<
+  'retail' | 'wholesale'
+>('retail');
+
+const [gstNumber, setGstNumber] =
+  useState('');
+
+const [drugLicense, setDrugLicense] =
+  useState('');
+  
+const [paymentStatus, setPaymentStatus] =
+  useState('paid');
+
+const [creditDays, setCreditDays] =
+  useState(0);
+
+const [paidAmount, setPaidAmount] =
+  useState(0);
   const [search, setSearch] =
     useState('');
 
@@ -103,12 +126,15 @@ export default function CreateSalePage() {
 
   const [notes, setNotes] = useState('');
 
+  
   // ================= FETCH PRODUCTS =================
   const fetchProducts = async () => {
     try {
       const response = await fetch(
         '/api/pharmacy/inventory'
       );
+
+
 
       const data = await response.json();
 
@@ -125,21 +151,32 @@ export default function CreateSalePage() {
   }, []);
 
   // ================= FILTER PRODUCTS =================
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const query =
-        search.toLowerCase();
 
-      return (
-        product.pharmacy_products?.name
-          ?.toLowerCase()
-          .includes(query) ||
-        product.batch_number
-          ?.toLowerCase()
-          .includes(query)
-      );
-    });
-  }, [products, search]);
+  const filteredProducts = useMemo(() => {
+  return products.filter((product) => {
+    const query = search.toLowerCase();
+
+    const matchesSearch =
+      product.pharmacy_products?.name
+        ?.toLowerCase()
+        .includes(query) ||
+      product.batch_number
+        ?.toLowerCase()
+        .includes(query);
+
+    const hasStock =
+      Number(product.stock_quantity || 0) > 0;
+
+    return (
+      matchesSearch &&
+      (!showAvailableOnly || hasStock)
+    );
+  });
+}, [
+  products,
+  search,
+  showAvailableOnly,
+]);
 
   // ================= ADD TO CART =================
   const addToCart = (
@@ -370,6 +407,69 @@ export default function CreateSalePage() {
     }
   };
 
+  const [customerSearch, setCustomerSearch] =
+  useState('');
+
+const [customers, setCustomers] =
+  useState<any[]>([]);
+
+const [selectedCustomerId, setSelectedCustomerId] =
+  useState<string | null>(null);
+
+
+ const searchCustomers = async (
+  searchText: string
+) => {
+  if (searchText.length < 3) {
+    setCustomers([]);
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `/api/pharmacy/customers/search?q=${encodeURIComponent(
+        searchText
+      )}`
+    );
+
+    const result = await res.json();
+
+    setCustomers(result.data || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+  
+useEffect(() => {
+  const timer = setTimeout(() => {
+    searchCustomers(customerSearch);
+  }, 300);
+
+  return () => clearTimeout(timer);
+}, [customerSearch]);
+  // ================= SELECT CUSTOMER =================
+
+  const selectCustomer = (customer: any) => {
+  setSelectedCustomerId(customer.id);
+
+  setCustomerName(customer.name || '');
+  setCustomerPhone(customer.phone || '');
+  setCustomerEmail(customer.email || '');
+  setCustomerAddress(customer.address || '');
+
+  setGstNumber(
+    customer.gst_number || ''
+  );
+
+  setDrugLicense(
+    customer.drug_license_number || ''
+  );
+
+  setCustomers([]);
+};
+
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -467,6 +567,27 @@ export default function CreateSalePage() {
                       Details
                     </h2>
 
+                    <div className="flex gap-3">
+  <button
+    onClick={() => setSaleType('retail')}
+    className={saleType === 'retail'
+      ? 'bg-blue-600 text-white'
+      : 'bg-white border'}
+  >
+    Retail
+  </button>
+
+  <button
+    onClick={() => setSaleType('wholesale')}
+    className={saleType === 'wholesale'
+      ? 'bg-blue-600 text-white'
+      : 'bg-white border'}
+  >
+    Wholesale
+  </button>
+</div>
+
+
                     <p className="text-sm text-slate-500">
                       Optional patient
                       information
@@ -487,19 +608,44 @@ export default function CreateSalePage() {
                       className="absolute left-3 top-3.5 text-slate-400"
                     />
 
-                    <input
-                      type="text"
-                      value={
-                        customerName
-                      }
-                      onChange={(e) =>
-                        setCustomerName(
-                          e.target.value
-                        )
-                      }
-                      placeholder="Enter customer name"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
-                    />
+                    <div className="relative">
+  <Search
+    size={16}
+    className="absolute left-3 top-3.5 text-slate-400"
+  />
+
+  <input
+    value={customerSearch}
+    onChange={(e) =>
+      setCustomerSearch(e.target.value)
+    }
+    placeholder="Search customer by phone or name"
+    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4"
+  />
+
+  {customers.length > 0 && (
+    <div className="absolute z-50 mt-2 w-full rounded-xl border bg-white shadow-lg">
+      {customers.map((customer) => (
+        <button
+          key={customer.id}
+          type="button"
+          className="w-full border-b p-3 text-left hover:bg-slate-50"
+          onClick={() =>
+            selectCustomer(customer)
+          }
+        >
+          <div className="font-medium">
+            {customer.name}
+          </div>
+
+          <div className="text-xs text-slate-500">
+            {customer.phone}
+          </div>
+        </button>
+      ))}
+    </div>
+  )}
+</div>
                   </div>
                 </div>
 
@@ -556,7 +702,79 @@ export default function CreateSalePage() {
                     />
                   </div>
                 </div>
+                {saleType === 'wholesale' && (
+  <>
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        GST Number
+      </label>
 
+      <div className="relative">
+        <FileText
+          size={16}
+          className="absolute left-3 top-3.5 text-slate-400"
+        />
+
+        <input
+          type="text"
+          value={gstNumber}
+          onChange={(e) =>
+            setGstNumber(e.target.value)
+          }
+          placeholder="GST Number"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
+        />
+      </div>
+    </div>
+
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        Drug License No
+      </label>
+
+      <div className="relative">
+        <Shield
+          size={16}
+          className="absolute left-3 top-3.5 text-slate-400"
+        />
+
+        <input
+          type="text"
+          value={drugLicense}
+          onChange={(e) =>
+            setDrugLicense(e.target.value)
+          }
+          placeholder="Drug License Number"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
+        />
+      </div>
+    </div>
+
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        Credit Days
+      </label>
+
+      <div className="relative">
+        <Calendar
+          size={16}
+          className="absolute left-3 top-3.5 text-slate-400"
+        />
+
+        <input
+          type="number"
+          value={creditDays}
+          onChange={(e) =>
+            setCreditDays(Number(e.target.value))
+          }
+          placeholder="Credit Days"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
+        />
+      </div>
+    </div>
+  </>
+)}
+                  
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Doctor Name
@@ -636,22 +854,39 @@ export default function CreateSalePage() {
                   </div>
 
                   <div className="relative w-full lg:w-80">
-                    <Search
-                      size={18}
-                      className="absolute left-3 top-3.5 text-slate-400"
-                    />
+<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+  <div className="relative w-full lg:w-80">
+    <Search
+      size={18}
+      className="absolute left-3 top-3.5 text-slate-400"
+    />
 
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) =>
-                        setSearch(
-                          e.target.value
-                        )
-                      }
-                      placeholder="Search medicines..."
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
-                    />
+    <input
+      type="text"
+      value={search}
+      onChange={(e) =>
+        setSearch(e.target.value)
+      }
+      placeholder="Search medicines..."
+      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 outline-none transition focus:border-blue-500 focus:bg-white"
+    />
+  </div>
+
+  <label className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-slate-700">
+    <input
+      type="checkbox"
+      checked={showAvailableOnly}
+      onChange={(e) =>
+        setShowAvailableOnly(
+          e.target.checked
+        )
+      }
+      className="h-4 w-4 rounded border-slate-300 text-blue-600"
+    />
+    Available Stock Only
+  </label>
+</div>
+
                   </div>
                 </div>
               </div>
@@ -1040,7 +1275,38 @@ export default function CreateSalePage() {
                       Card
                     </p>
                   </button>
-                </div>
+                  {paymentMethod === 'credit' && (
+  <div className="space-y-3">
+    <input
+      type="number"
+      value={creditDays}
+      onChange={(e) =>
+        setCreditDays(Number(e.target.value))
+      }
+      placeholder="Credit Days"
+    />
+
+    <input
+      type="number"
+      value={paidAmount}
+      onChange={(e) =>
+        setPaidAmount(Number(e.target.value))
+      }
+      placeholder="Paid Amount"
+    />
+  </div>
+)}
+  
+  <select
+  value={paymentStatus}
+  onChange={(e) =>
+    setPaymentStatus(e.target.value)
+  }
+>
+  <option value="paid">Paid</option>
+  <option value="partial">Partial</option>
+  <option value="credit">Credit</option>
+</select>              </div>
               </div>
 
               {/* NOTES */}

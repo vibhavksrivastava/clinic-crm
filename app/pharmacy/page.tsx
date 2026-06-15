@@ -145,6 +145,14 @@ const quickActions: QuickAction[] = [
       'from-teal-500 to-emerald-500',
     link: '/pharmacy/inventory',
   },
+      {
+    title: 'GRN List',
+    description: 'GRN List',
+    icon: BarChart3,
+    gradient:
+      'from-teal-500 to-emerald-500',
+    link: '/pharmacy/grn',
+  },
     {
     title: 'GST Reports',
     description: 'GST filing reports',

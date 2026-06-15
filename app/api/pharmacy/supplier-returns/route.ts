@@ -1,43 +1,232 @@
+// app/api/pharmacy/supplier-returns/route.ts
+
 import { supabase } from '@/lib/db/client';
-import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
-// ======================================
-// TYPES
-// ======================================
-
-interface SupplierReturn {
-  id: string;
-}
-
-interface SupplierReturnItem {
-  supplier_return_id: string;
-}
-
-interface ReturnItemPayload {
-  quantity: number;
-  purchase_price: number;
-  gst_percent?: number;
-  purchase_order_item_id?: string;
-  product_id: string;
-  batch_number?: string;
-  expiry_date?: string;
-}
-
-// ======================================
-// GET - LIST SUPPLIER RETURNS
-// ======================================
-
-export async function GET(
-  request: NextRequest
-) {
+// ================= GET =================
+export async function GET(req: NextRequest) {
   try {
-    const userContext =
-      await getSessionFromRequest(
-        request
-      );
+    const session = await getSessionFromRequest(req);
 
-    if (!userContext) {
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+
+    const id = searchParams.get('id');
+
+    // ================= SINGLE =================
+    if (id) {
+      const { data, error } = await supabase
+        .from('pharmacy_supplier_returns')
+        .select(`
+          *,
+          supplier:supplier_id(
+            id,
+            supplier_name
+          ),
+          grn:grn_id(
+            id,
+            grn_number
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(data);
+    }
+
+    // ================= LIST =================
+
+    const { data, error } = await supabase
+      .from('pharmacy_supplier_returns')
+      .select(`
+        *,
+        supplier:supplier_id(
+          id,
+          supplier_name
+        ),
+        grn:grn_id(
+          id,
+          grn_number
+        )
+      `)
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    const returns =
+      data?.map((item: any) => ({
+        id: item.id,
+        return_number: item.return_number,
+        return_date: item.return_date,
+        total_amount: item.total_amount,
+        gst_amount: item.gst_amount,
+        status: item.status,
+
+        supplier_id:
+          item.supplier?.id || '',
+
+        supplier_name:
+          item.supplier?.supplier_name ||
+          '',
+
+        grn_id:
+          item.grn?.id || '',
+
+        grn_number:
+          item.grn?.grn_number || '',
+      })) || [];
+
+    return NextResponse.json(returns);
+  } catch (error) {
+    console.error(
+      'SUPPLIER RETURN LIST ERROR:',
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          'Failed to fetch supplier returns',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// ================= POST =================
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSessionFromRequest(req);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+
+    const {
+      grn_id,
+      purchase_order_id,
+      supplier_id,
+      reason,
+      notes,
+      subtotal,
+      gst_amount,
+      total_amount,
+      status,
+    } = body;
+
+    const returnNumber =
+      `SR-${Date.now()}`;
+
+    // Get organization & branch from GRN
+
+    const {
+      data: grn,
+      error: grnError,
+    } = await supabase
+      .from('pharmacy_grns')
+      .select(
+        'organization_id, branch_id'
+      )
+      .eq('id', grn_id)
+      .single();
+
+    if (grnError || !grn) {
+      return NextResponse.json(
+        { error: 'GRN not found' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } =
+      await supabase
+        .from(
+          'pharmacy_supplier_returns'
+        )
+        .insert([
+          {
+            organization_id:
+              grn.organization_id,
+
+            branch_id:
+              grn.branch_id,
+
+            grn_id,
+            purchase_order_id,
+            supplier_id,
+
+            return_number:
+              returnNumber,
+
+            reason,
+            notes,
+
+            subtotal,
+            gst_amount,
+            total_amount,
+
+            status:
+              status || 'Pending',
+
+            created_by:
+              session.userId,
+          },
+        ])
+        .select()
+        .single();
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        error:
+          'Failed to create supplier return',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// ================= PUT =================
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await getSessionFromRequest(req);
+
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -45,457 +234,106 @@ export async function GET(
     }
 
     const { searchParams } =
-      new URL(request.url);
+      new URL(req.url);
 
-    const status =
-      searchParams.get('status');
+    const id =
+      searchParams.get('id');
 
-    let query =
-      supabase
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID required' },
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json();
+
+    const { data, error } =
+      await supabase
         .from(
           'pharmacy_supplier_returns'
         )
-        .select('*')
-        .eq(
-          'organization_id',
-          userContext.organizationId
-        )
-        .order(
-          'created_at',
-          {
-            ascending: false,
-          }
-        );
+        .update(body)
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (
-      userContext.branchId
-    ) {
-      query =
-        query.eq(
-          'branch_id',
-          userContext.branchId
-        );
-    }
-
-    if (
-      status &&
-      status !== 'All'
-    ) {
-      query =
-        query.eq(
-          'status',
-          status
-        );
-    }
-
-    // ==========================
-    // FETCH RETURNS
-    // ==========================
-
-    const {
-      data: returns,
-      error,
-    } = await query;
-
-    if (error)
-      throw error;
-
-    if (
-      !returns?.length
-    ) {
+    if (error) {
       return NextResponse.json(
-        []
+        { error: error.message },
+        { status: 500 }
       );
     }
 
-    // ==========================
-    // FETCH RETURN ITEMS
-    // ==========================
-
-    const returnIds =
-      (
-        returns as SupplierReturn[]
-      ).map(
-        (
-          r: SupplierReturn
-        ) => r.id
-      );
-
-    const {
-      data: items,
-      error: itemError,
-    } = await supabase
-      .from(
-        'pharmacy_supplier_return_items'
-      )
-      .select('*')
-      .in(
-        'supplier_return_id',
-        returnIds
-      );
-
-    if (
-      itemError
-    )
-      throw itemError;
-
-    // ==========================
-    // GROUP ITEMS
-    // ==========================
-
-    const grouped =
-      (
-        returns as SupplierReturn[]
-      ).map(
-        (
-          ret: SupplierReturn
-        ) => ({
-          ...ret,
-          items:
-            (
-              items as SupplierReturnItem[]
-            )?.filter(
-              (
-                i: SupplierReturnItem
-              ) =>
-                i.supplier_return_id ===
-                ret.id
-            ) || [],
-        })
-      );
-
-    return NextResponse.json(
-      grouped
-    );
-  } catch (
-    error: any
-  ) {
-    console.error(
-      'Supplier Returns GET ERROR:',
-      error
-    );
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error(error);
 
     return NextResponse.json(
       {
         error:
-          error?.message ||
-          JSON.stringify(
-            error
-          ),
+          'Failed to update supplier return',
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
 
-// ======================================
-// POST - CREATE SUPPLIER RETURN
-// ======================================
-
-export async function POST(
-  request: NextRequest
+// ================= DELETE =================
+export async function DELETE(
+  req: NextRequest
 ) {
   try {
-    const userContext =
-      await getSessionFromRequest(
-        request
-      );
+    const session =
+      await getSessionFromRequest(req);
 
-    if (!userContext) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const body =
-      await request.json();
+    const { searchParams } =
+      new URL(req.url);
 
-    console.log(
-      'SUPPLIER RETURN PAYLOAD:',
-      body
-    );
+    const id =
+      searchParams.get('id');
 
-    const {
-      purchase_order_id,
-      reason,
-      notes,
-      items,
-    } = body;
-
-    if (
-      !purchase_order_id ||
-      !items?.length
-    ) {
+    if (!id) {
       return NextResponse.json(
-        {
-          error:
-            'Purchase order and items required',
-        },
-        {
-          status: 400,
-        }
+        { error: 'ID required' },
+        { status: 400 }
       );
     }
 
-    // ==========================
-    // FETCH PURCHASE ORDER
-    // ==========================
+    const { error } =
+      await supabase
+        .from(
+          'pharmacy_supplier_returns'
+        )
+        .delete()
+        .eq('id', id);
 
-    const {
-      data: po,
-      error: poError,
-    } = await supabase
-      .from(
-        'pharmacy_purchase_orders'
-      )
-      .select(`
-        id,
-        supplier_id
-      `)
-      .eq(
-        'id',
-        purchase_order_id
-      )
-      .single();
-
-    if (
-      poError ||
-      !po
-    ) {
+    if (error) {
       return NextResponse.json(
-        {
-          error:
-            'Purchase order not found',
-        },
-        {
-          status: 400,
-        }
+        { error: error.message },
+        { status: 500 }
       );
     }
 
-    // ==========================
-    // CALCULATE TOTALS
-    // ==========================
-
-    let subtotal = 0;
-    let gstAmount = 0;
-
-    for (const item of items as ReturnItemPayload[]) {
-      const qty =
-        Number(
-          item.quantity || 0
-        );
-
-      const price =
-        Number(
-          item.purchase_price || 0
-        );
-
-      const gstPercent =
-        Number(
-          item.gst_percent || 0
-        );
-
-      const lineTotal =
-        qty * price;
-
-      const lineGST =
-        lineTotal *
-        (
-          gstPercent / 100
-        );
-
-      subtotal +=
-        lineTotal;
-
-      gstAmount +=
-        lineGST;
-    }
-
-    const totalAmount =
-      subtotal +
-      gstAmount;
-
-    const returnNumber =
-      `PR-${Date.now()}`;
-
-    // ==========================
-    // INSERT HEADER
-    // ==========================
-
-    const {
-      data: header,
-      error: headerError,
-    } = await supabase
-      .from(
-        'pharmacy_supplier_returns'
-      )
-      .insert({
-        organization_id:
-          userContext.organizationId,
-
-        branch_id:
-          userContext.branchId,
-
-        purchase_order_id,
-
-        supplier_id:
-          po.supplier_id,
-
-        return_number:
-          returnNumber,
-
-        return_date:
-          new Date(),
-
-        reason,
-        notes,
-
-        subtotal,
-
-        gst_amount:
-          gstAmount,
-
-        total_amount:
-          totalAmount,
-
-        status:
-          'Pending',
-
-        created_by:
-          userContext.userId,
-      })
-      .select()
-      .single();
-
-    if (
-      headerError
-    )
-      throw headerError;
-
-    // ==========================
-    // PREPARE RETURN ITEMS
-    // ==========================
-
-    const returnItems =
-      (
-        items as ReturnItemPayload[]
-      ).map(
-        (
-          item: ReturnItemPayload
-        ) => {
-          const qty =
-            Number(
-              item.quantity
-            );
-
-          const price =
-            Number(
-              item.purchase_price
-            );
-
-          const gstPercent =
-            Number(
-              item.gst_percent || 0
-            );
-
-          const gst =
-            qty *
-            price *
-            (
-              gstPercent / 100
-            );
-
-          return {
-            supplier_return_id:
-              header.id,
-
-            purchase_item_id:
-              item.purchase_order_item_id,
-
-            product_id:
-              item.product_id,
-
-            batch_number:
-              item.batch_number,
-
-            expiry_date:
-              item.expiry_date,
-
-            quantity:
-              qty,
-
-            purchase_price:
-              price,
-
-            gst_percent:
-              gstPercent,
-
-            gst_amount:
-              gst,
-
-            total_amount:
-              qty *
-                price +
-              gst,
-          };
-        }
-      );
-
-    // ==========================
-    // INSERT RETURN ITEMS
-    // ==========================
-
-    const {
-      error: itemError,
-    } = await supabase
-      .from(
-        'pharmacy_supplier_return_items'
-      )
-      .insert(
-        returnItems
-      );
-
-    if (
-      itemError
-    )
-      throw itemError;
-
-    return NextResponse.json(
-      {
-        message:
-          'Supplier return created successfully',
-
-        return_id:
-          header.id,
-
-        return_number:
-          returnNumber,
-      },
-      {
-        status: 201,
-      }
-    );
-  } catch (
-    error: any
-  ) {
-    console.error(
-      'Supplier Return POST:',
-      error
-    );
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error(error);
 
     return NextResponse.json(
       {
         error:
-          error.message ||
-          'Failed to create supplier return',
+          'Failed to delete supplier return',
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
