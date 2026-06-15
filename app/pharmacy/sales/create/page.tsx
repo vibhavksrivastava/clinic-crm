@@ -467,6 +467,8 @@ useEffect(() => {
   );
 
   setCustomers([]);
+     // setCustomerSearch(customer.name || '');
+
 };
 
 
@@ -615,10 +617,11 @@ useEffect(() => {
   />
 
   <input
-    value={customerSearch}
-    onChange={(e) =>
-      setCustomerSearch(e.target.value)
-    }
+    value={customerName}
+    onChange={(e) =>{
+      setCustomerName(e.target.value);
+      setCustomerSearch(e.target.value);
+    }}
     placeholder="Search customer by phone or name"
     className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4"
   />
